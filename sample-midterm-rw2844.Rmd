@@ -295,6 +295,16 @@ tuning2 <- ggplot(model.rf, highlight = TRUE)
 model.rf$bestTune
 ```
 
+```{r adaboost}
+
+```
+
+```{r nn}
+
+```
+
+
+
 ```{r resample, cache=TRUE}
 res <- resamples(list(GLM = model.glm, GLMNET = model.glmn, GAM = model.gam, MARS = model.mars, CTREE = model.ctree, RPART = model.rpart, LDA = model.lda, QDA = model.qda, NB = model.nb, RF = model.rf))
 trainROC <- bwplot(res, metric = "ROC")

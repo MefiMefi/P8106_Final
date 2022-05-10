@@ -1,0 +1,95 @@
+---
+title: "Untitled"
+author: "Renjie Wei"
+date: '2022-03-19'
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, warning = FALSE, message = FALSE)
+```
+
+```{r packages}
+setwd(dirname(rstudioapi::getSourceEditorContext()$path))
+library(gridExtra)
+library(ggplot2)
+library(corrplot)
+library(ResourceSelection)
+library(ISLR)
+library(pROC)
+library(tidyverse)
+library(summarytools)
+library(glmnet)
+library(caret)
+library(plotmo)
+library(readr)
+library(mlbench)
+library(gtsummary)
+library(rpart)
+library(rpart.plot)
+library(party)
+library(partykit)
+library(vip)
+library(recipes)
+
+
+library(skimr)
+library(visdat)
+library(reshape2)
+library(DataExplorer)
+library(ggcorrplot)
+library(mgcv)
+library(klaR)
+library(ggridges)
+library(AppliedPredictiveModeling)
+library(patchwork)
+library(Hmisc)
+library(groupdata2)
+library(reshape)
+library(glmnet)
+library(MASS)
+```
+
+
+```{r load_data}
+theme_set(theme_bw())
+hcv <- read.csv("HepatitisCdata.csv")[,-1]
+#sum(is.na(hcv)) #31
+hcv$Category <- case_when(hcv$Category == '0=Blood Donor' ~ 0,
+                          hcv$Category == '0s=suspect Blood Donor' ~ 0,
+                          TRUE ~ 1)
+hcv$Sex <- factor(hcv$Sex, levels = c("f", "m"))
+
+
+hcv.numeric <- hcv[,!names(hcv) %in% c("Category", "Sex")]
+hcv.factor <- hcv[,!names(hcv) %in% colnames(hcv.numeric)]
+hcv.factor <- hcv.factor[,!names(hcv.factor) %in% "Category"]
+
+y <- hcv$Category
+hcv$Category <- as.factor(ifelse(hcv$Category == 1, "patient", "donor"))
+hcv$Sex <- factor(as.numeric(hcv$Sex)-1)
+```
+
+```{r train_test_split}
+set.seed(2022)
+rowTrain <- createDataPartition(y = hcv$Category, p = 0.7, list = FALSE)
+options(na.action='na.pass')
+
+hcv.train.df <- hcv[rowTrain,]
+hcv.test.df <- hcv[-rowTrain,]
+
+hcv.train.x <- model.matrix(~.-1,hcv[rowTrain,])
+hcv.train.y <- hcv$Category[rowTrain]
+hcv.test.x <- model.matrix(~.-1,hcv[-rowTrain,])
+hcv.test.y <- hcv$Category[-rowTrain]
+```
+
+
+```{r preprocess_with_impute}
+preprocess_recipe = recipe(Category ~ ., data = hcv.train.df) %>%
+    step_knnimpute(all_predictors(), neighbors = 5) %>%  
+    step_BoxCox(all_numeric_predictors()) %>% 
+    step_center(all_numeric_predictors()) %>% 
+    step_scale(all_numeric_predictors())
+```
+

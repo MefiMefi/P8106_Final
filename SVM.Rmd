@@ -70,12 +70,24 @@ hcv.test.y <- hcv$Category[-rowTrain]
 
 ```{r}
 ctrl <- trainControl(method = "repeatedcv",
-                    repeats = 5,
-                    summaryFunction = twoClassSummary,
-                    classProbs = TRUE)
+                    repeats = 5)
 
 ctrl_test = trainControl(method = "cv")
 ```
+
+
+```{r}
+library(parallel)
+# Calculate the number of cores
+num_cores <- detectCores() - 1
+library(doParallel)
+# create the cluster for caret to use
+# CPU usage may go up to 100%
+cl <- makePSOCKcluster(num_cores)
+registerDoParallel(cl)
+
+```
+
 
 ```{r}
 set.seed(2022)
@@ -83,10 +95,12 @@ svml.fit = train(Category~.,
                  data = hcv.train.df,
                  method = "svmLinear",
                  metric = "Accuracy",
-                 tuneGrid = data.frame(C = exp(seq(-2,4,len = 200))),
+                 tuneGrid = data.frame(C = exp(seq(-2,2,len = 200))),
                  trControl = ctrl)
 
 plot(svml.fit, highlight = TRUE, xTrans = log)
+svml.fit$bestTune
+saveRDS(svml.fit, "svml.rds")
 ```
 
 ```{r}
@@ -106,5 +120,9 @@ myPar = list(superpose.symbol = list(col = myCol),
              superpose.line = list(col = myCol))
 
 plot(svmr.fit, hightlight = TRUE, par.settings = myPar)
+
+svmr.fit$bestTune
+saveRDS(svmr.fit, "svmr.rds")
+
 ```
 

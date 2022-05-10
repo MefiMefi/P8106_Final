@@ -47,13 +47,12 @@ cl <- makePSOCKcluster(num_cores)
 registerDoParallel(cl)
 
 gbmA.grid <- expand.grid(n.trees = c(3000,4000,5000,6000),
-                         interaction.depth = 1:5,
-                         shrinkage = c(0.0005,0.001,0.002),
+                         interaction.depth = 1:6,
+                         shrinkage = c(0.001, 0.002, 0.005),
                          n.minobsinnode = 1)
-set.seed(1)
-gbmA.fit <- train(Purchase ~ . , 
-                  OJ, 
-                  subset = rowTrain.oj, 
+set.seed(2022)
+model.gbmA <- train(Category ~ . , 
+                  hcv.train.df, 
                   tuneGrid = gbmA.grid,
                   trControl = ctrl,
                   method = "gbm",
@@ -61,10 +60,45 @@ gbmA.fit <- train(Purchase ~ . ,
                   metric = "ROC",
                   verbose = FALSE)
 
-ggplot(gbmA.fit, highlight = TRUE)
-
+ggplot(model.gbmA, highlight = TRUE)
+model.gbmA$bestTune
 # Stop the parallel computing cluster
 stopCluster(cl)
 registerDoSEQ()
 ```
 
+```{r svm_linear}
+set.seed(2022)
+model.svml <- train(Category ~ . , 
+                  data = hcv.train.df, 
+                  method = "svmLinear",
+                  tuneGrid = data.frame(C = exp(seq(-4,5,len = 50))),
+                  trControl = ctrl)
+
+plot(model.svml, highlight = TRUE, xTrans = log)
+model.svml$bestTune
+```
+
+```{r compare}
+res <- resamples(list(AdaBoost = model.gbmA, SVML = model.svml))
+
+bwplot(res, metric = "ROC")
+```
+
+```{r save}
+saveRDS(model.gbmA)
+saveRDS(model.svml)
+```
+
+
+### Tuning parameters
+
+#### Adaboost Model
+
+We tested on different ranges of tuning parameters, including number of trees (`n.trees`), number of splits (`interaction.depth`) in each trees and the shrinkage parameter (`shrinkage`). We looked for the point where the best cross-validated ROC AUC is obtained. The best tuned parameters are number of trees = 4000, number of splits = 5, shrinkage = 0.002.
+
+#### MARS Model
+
+MARS model can take a wide degree of features and number of terms. For simplicity, we only consider the performance of MARS in the first four degrees and all terms. The best tuned parameter is degree = 3 and nprune = 6.
+
+0.3460318

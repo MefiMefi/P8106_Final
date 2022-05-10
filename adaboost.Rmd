@@ -1,0 +1,70 @@
+---
+title: "adaboost"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+# This chunk loads all the packages used in this homework
+library(ISLR)
+library(mlbench)
+library(caret)
+library(randomForest)
+library(ranger)
+library(gbm)
+library(pdp)
+library(pROC)
+library(rpart)
+
+library(ggplot2)
+library(tidyverse)
+
+
+# General figure set up
+knitr::opts_chunk$set(
+  # hide warning messages
+  warning = FALSE
+)
+```
+
+```{r input}
+#source("preprocess.Rmd")
+# adaboost
+set.seed(2022)
+ctrl <- trainControl(method = "repeatedcv",
+                     classProbs = TRUE, 
+                     summaryFunction = twoClassSummary)
+```
+
+
+```{r adaboost}
+library(parallel)
+# Calculate the number of cores
+num_cores <- detectCores() - 1
+library(doParallel)
+# create the cluster for caret to use
+# CPU usage may go up to 100%
+cl <- makePSOCKcluster(num_cores)
+registerDoParallel(cl)
+
+gbmA.grid <- expand.grid(n.trees = c(3000,4000,5000,6000),
+                         interaction.depth = 1:5,
+                         shrinkage = c(0.0005,0.001,0.002),
+                         n.minobsinnode = 1)
+set.seed(1)
+gbmA.fit <- train(Purchase ~ . , 
+                  OJ, 
+                  subset = rowTrain.oj, 
+                  tuneGrid = gbmA.grid,
+                  trControl = ctrl,
+                  method = "gbm",
+                  distribution = "adaboost",
+                  metric = "ROC",
+                  verbose = FALSE)
+
+ggplot(gbmA.fit, highlight = TRUE)
+
+# Stop the parallel computing cluster
+stopCluster(cl)
+registerDoSEQ()
+```
+

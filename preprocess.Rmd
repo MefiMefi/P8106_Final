@@ -77,11 +77,6 @@ options(na.action='na.pass')
 
 hcv.train.df <- hcv[rowTrain,]
 hcv.test.df <- hcv[-rowTrain,]
-
-hcv.train.x <- model.matrix(~.-1,hcv[rowTrain,])
-hcv.train.y <- hcv$Category[rowTrain]
-hcv.test.x <- model.matrix(~.-1,hcv[-rowTrain,])
-hcv.test.y <- hcv$Category[-rowTrain]
 ```
 
 
@@ -92,4 +87,20 @@ preprocess_recipe = recipe(Category ~ ., data = hcv.train.df) %>%
     step_center(all_numeric_predictors()) %>% 
     step_scale(all_numeric_predictors())
 ```
+
+```{r impute}
+set.seed(2022)
+
+prep <- prep(preprocess_recipe, training = hcv.train.df)
+
+# !! apply the preprocessing operations 
+hcv.train.df <- bake(prep, new_data = hcv.train.df)
+hcv.test.df <- bake(prep, new_data = hcv.test.df)
+
+hcv.train.x <- model.matrix(~.-1,hcv[rowTrain,])
+hcv.train.y <- hcv$Category[rowTrain]
+hcv.test.x <- model.matrix(~.-1,hcv[-rowTrain,])
+hcv.test.y <- hcv$Category[-rowTrain]
+```
+
 

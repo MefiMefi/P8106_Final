@@ -1,0 +1,110 @@
+---
+title: "SVM"
+date: "2022/5/10"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+library(tidyverse)
+library(caret)
+library(recipes)
+
+theme_set(theme_minimal() + theme(legend.position = "bottom"))
+
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+```{r}
+hcv <- read.csv("HepatitisCdata.csv")[,-1]
+#sum(is.na(hcv)) #31
+hcv$Category <- case_when(hcv$Category == '0=Blood Donor' ~ 0,
+                          hcv$Category == '0s=suspect Blood Donor' ~ 0,
+                          TRUE ~ 1)
+hcv$Sex <- factor(hcv$Sex, levels = c("f", "m"))
+
+
+hcv.numeric <- hcv[,!names(hcv) %in% c("Category", "Sex")]
+hcv.factor <- hcv[,!names(hcv) %in% colnames(hcv.numeric)]
+hcv.factor <- hcv.factor[,!names(hcv.factor) %in% "Category"]
+
+y <- hcv$Category
+hcv$Category <- as.factor(ifelse(hcv$Category == 1, "patient", "donor"))
+hcv$Sex <- factor(as.numeric(hcv$Sex)-1)
+```
+
+
+```{r}
+set.seed(2022)
+rowTrain <- createDataPartition(y = hcv$Category, p = 0.7, list = FALSE)
+options(na.action='na.pass')
+
+hcv.train.df <- hcv[rowTrain,]
+hcv.test.df <- hcv[-rowTrain,]
+```
+
+```{r preprocess_with_impute}
+preprocess_recipe = recipe(Category ~ ., data = hcv.train.df) %>%
+    step_knnimpute(all_predictors(), neighbors = 5) %>%  
+    step_BoxCox(all_numeric()) %>% 
+    step_center(all_numeric()) %>% 
+    step_scale(all_numeric())
+```
+
+
+```{r impute}
+set.seed(2022)
+
+prep <- prep(preprocess_recipe, training = hcv.train.df)
+prep$template
+# !! apply the preprocessing operations 
+hcv.train.df <- bake(prep, new_data = hcv.train.df)
+hcv.test.df <- bake(prep, new_data = hcv.test.df)
+
+hcv.train.x <- model.matrix(~.-1,hcv[rowTrain,])
+hcv.train.y <- hcv$Category[rowTrain]
+hcv.test.x <- model.matrix(~.-1,hcv[-rowTrain,])
+hcv.test.y <- hcv$Category[-rowTrain]
+```
+
+
+```{r}
+ctrl <- trainControl(method = "repeatedcv",
+                    repeats = 5,
+                    summaryFunction = twoClassSummary,
+                    classProbs = TRUE)
+
+ctrl_test = trainControl(method = "cv")
+```
+
+```{r}
+set.seed(2022)
+svml.fit = train(Category~.,
+                 data = hcv.train.df,
+                 method = "svmLinear",
+                 metric = "Accuracy",
+                 tuneGrid = data.frame(C = exp(seq(-2,4,len = 200))),
+                 trControl = ctrl)
+
+plot(svml.fit, highlight = TRUE, xTrans = log)
+```
+
+```{r}
+svmr.grid = expand.grid(C = exp(seq(-1,4,len = 20)),
+                        sigma = exp(seq(-6,-2,len=20)))
+
+set.seed(2022)
+svmr.fit = train(Category~.,
+                 data = hcv.train.df,
+                 method = "svmRadialSigma",
+                 tuneGrid = svmr.grid,
+                 metric = "Accuracy",
+                 trControl = ctrl)
+
+myCol = rainbow(20)
+myPar = list(superpose.symbol = list(col = myCol),
+             superpose.line = list(col = myCol))
+
+plot(svmr.fit, hightlight = TRUE, par.settings = myPar)
+```
+

@@ -1,0 +1,378 @@
+---
+title: "Untitled"
+author: "Renjie Wei"
+date: '2022-03-19'
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, warning = FALSE, message = FALSE)
+```
+
+```{r packages}
+setwd(dirname(rstudioapi::getSourceEditorContext()$path))
+library(gridExtra)
+library(ggplot2)
+library(corrplot)
+library(ResourceSelection)
+library(ISLR)
+library(pROC)
+library(tidyverse)
+library(summarytools)
+library(glmnet)
+library(caret)
+library(plotmo)
+library(readr)
+library(mlbench)
+library(gtsummary)
+library(rpart)
+library(rpart.plot)
+library(party)
+library(partykit)
+library(vip)
+```
+
+```{r customized_summary_plots}
+# numerate case
+numCharts <- function(inputdf, dep, nr = 5, nc = 4) {
+par(mfcol= c(nr, nc))
+x=0
+for (i in inputdf){
+  x = 1 + x
+  chartname <- colnames(inputdf)[x]
+    plot <- plot(density(i[dep == "patient"]), col="red", main = chartname, cex.axis = 1.5, cex.main = 2, xlab = "")
+          lines(density(i[dep == "donor"]), col = "blue")
+          lines(density(i), col = "gray")
+          
+    plot <- hist(i, main=chartname, cex.axis = 1.5, cex.main = 2, xlab = "")
+    
+    plot <- plot(i[dep == "patient"], col="red", main = chartname, pch = 0,
+            cex.axis = 1.5, cex.main = 2, xlab = "", ylab ="Red:Category=1")
+            points(i[dep == "donor"], col = "blue", pch = 3)
+            
+    plot <- boxplot(i~dep, main=chartname, cex.axis = 1.5, cex.main = 2, xlab = "")
+
+    }
+}
+
+#Print chart for selected variable
+plot_function <- function(yes, no, all, name) {
+    plot(density(yes), col="red", main = name, cex.axis = 1.5, cex.main = 2, xlim =
+             c(75,350), ylim=c(0,0.018), xlab = "", xpd=TRUE)
+    lines(density(no), col = "blue", xpd=TRUE)
+    lines(density(all), col = "gray", xpd=TRUE)
+    legend("topleft", 
+           legend = c(paste("Yes #",length(yes)), paste("No #",length(no)), paste("All #", length(all))), 
+           col=c("red", "blue", "gray"), 
+           text.col = c("red", "blue", "gray"), lwd = c(1,1,1), cex = 1.5, box.lty = 0)
+}
+
+#Function for chart size settings
+set_plot_dimensions <- function(width_choice, height_choice) {
+    options(repr.plot.width=width_choice, repr.plot.height=height_choice)
+}
+```
+
+
+```{r load_data}
+theme_set(theme_bw())
+hcv <- read.csv("HepatitisCdata.csv")[,-1]
+#sum(is.na(hcv)) #31
+hcv$Category <- case_when(hcv$Category == '0=Blood Donor' ~ 0,
+                          hcv$Category == '0s=suspect Blood Donor' ~ 0,
+                          TRUE ~ 1)
+hcv$Sex <- factor(hcv$Sex, levels = c("f", "m"))
+
+
+hcv.numeric <- hcv[,!names(hcv) %in% c("Category", "Sex")]
+hcv.factor <- hcv[,!names(hcv) %in% colnames(hcv.numeric)]
+hcv.factor <- hcv.factor[,!names(hcv.factor) %in% "Category"]
+
+y <- hcv$Category
+
+
+dfSummary(hcv)
+
+rnoaa::vis_miss(hcv)
+```
+
+
+```{r table_one}
+hcv$Category <- as.factor(ifelse(hcv$Category == 1, "patient", "donor"))
+hcv %>%
+  tbl_summary(by = Category, missing_text = "Missing/NA") %>%
+  add_p(pvalue_fun = ~style_pvalue(.x, digits = 2)) %>%
+  add_overall() %>%
+  add_n() %>%
+  modify_header(label ~ "**Variable**") %>%
+  modify_spanning_header(c("stat_1", "stat_2") ~ "**Subject Type**") %>%
+  modify_footnote(
+    all_stat_cols() ~ "Median (IQR) or Frequency (%)"
+  ) %>%
+  modify_caption("**Table 1. Summary of Dataset**") %>%
+  bold_labels() %>% as_gt() %>% gt::gtsave("./plots/summaryTab.png")
+```
+
+```{r refactor_numeric}
+hcv$Sex <- factor(as.numeric(hcv$Sex)-1)
+```
+
+
+```{r data_partitioning_preprocessing}
+set.seed(2022)
+rowTrain <- createDataPartition(y = hcv$Category, p = 0.7, list = FALSE)
+options(na.action='na.pass')
+hcv.train.x <- model.matrix(~.-1,hcv[rowTrain,2:13])
+hcv.train.y <- hcv$Category[rowTrain]
+hcv.test.x <- model.matrix(~.-1,hcv[-rowTrain,2:13])
+hcv.test.y <- hcv$Category[-rowTrain]
+# dealing for missing values
+bagImp <- preProcess(hcv.train.x, method = "bagImpute")
+hcv.train.x.bag <- data.frame(predict(bagImp, hcv.train.x))
+hcv.train.x.bag <- hcv.train.x.bag[, !names(hcv.train.x.bag) %in% "Sex0"]
+hcv.test.x.bag <- data.frame(predict(bagImp, hcv.test.x))
+hcv.test.x.bag <- hcv.test.x.bag[, !names(hcv.train.x.bag) %in% "Sex0"]
+
+# preprocessing:
+#pp <- preProcess(hcv.train.x.bag, method = c("BoxCox", "zv"))
+#hcv.train.x.bag <- predict(pp, hcv.train.x.bag)
+#hcv.test.x.bag <- predict(pp, hcv.test.x.bag)
+```
+
+
+
+```{r numeric_plots}
+train.numeric = hcv.train.x.bag
+train.numeric["y"] = hcv.train.y
+train.numeric["Sex"] = ifelse(train.numeric$Sex1,"male","female")
+
+fp1 <- featurePlot(
+    x = hcv.train.x.bag %>% select(-Sex1),
+    y = hcv.train.y,
+    scales = list(x = list(relation = "free"),
+                  y = list(relation = "free")),
+    plot = "density", pch = "|",
+    auto.key = list(columns = 2))
+fp2 <- featurePlot(
+    x = hcv.train.x.bag %>% select(-Sex1),
+    y = hcv.train.y,
+    scales = list(x = list(relation = "free"),
+                  y = list(relation = "free")),
+    plot = "boxplot", pch = "|",
+    auto.key = list(columns = 2))
+
+fp3 <- ggplot(train.numeric, aes(Sex, group = y)) + 
+    geom_bar(aes(y = ..prop.., fill = y), alpha = .5,stat="count") +
+    scale_y_continuous(labels=scales::percent) +
+    ylab("relative frequencies") +
+    facet_grid(~y)
+
+lay <- rbind(c(1,1),
+             c(2,3))
+fp <- grid.arrange(fp1, fp2, fp3, layout_matrix = lay)
+ggsave(filename = "./plots/featurePlot.png",plot = fp, device = "png", width = 16, height = 18)
+```
+
+```{r glm, cache=TRUE}
+ctrl <- trainControl(method = "cv",
+                     summaryFunction = twoClassSummary,
+                     classProbs = TRUE)
+
+set.seed(2022)
+# glm
+model.glm <- train(x = hcv.train.x.bag,
+                   y = hcv.train.y,
+                   method = "glm",
+                   metric = "ROC",
+                   trControl = ctrl)
+# penalized glm
+glmnGrid <- expand.grid(alpha = seq(0, 1, length = 21), lambda = exp(seq(6,-2, length = 50)))
+model.glmn <- train(x = hcv.train.x.bag,
+                   y = hcv.train.y,
+                   method = "glmnet",
+                   tuneGrid = glmnGrid,
+                   metric = "ROC",
+                   trControl = ctrl)
+model.glmn$bestTune
+myCol <- rainbow(25)
+myPar <- list(
+    superpose.symbol = list(col = myCol),
+    superpose.line = list(col = myCol)
+)
+tuning <- ggplot(model.glmn,par.settings = myPar, highlight = TRUE) + scale_x_log10() + ggtitle("GLM tuning parameters")
+
+```
+
+```{r gam, cache=TRUE}
+set.seed(2022)
+gam.train.x <- hcv.train.x.bag
+gam.train.x$Sex1 <- factor(gam.train.x$Sex1)
+model.gam <- train(x = gam.train.x,
+                   y = hcv.train.y,
+                   method = "gam",
+                   metric = "ROC",
+                   trControl = ctrl)
+model.gam$finalModel
+model.gam$bestTune
+```
+
+```{r mars, cache=TRUE}
+set.seed(2022)
+model.mars <- train(x = hcv.train.x.bag,
+                   y = hcv.train.y,
+                   method = "earth",
+                   tuneGrid = expand.grid(degree = 1:4, nprune = 2:23),
+                   metric = "ROC",
+                   trControl = ctrl)
+tuning1 <- ggplot(model.mars, highlight  = TRUE)
+model.mars$finalModel
+model.mars$bestTune
+```
+```{r lda}
+model.lda <- train(x = hcv.train.x.bag,
+                   y = hcv.train.y,
+                   method = "lda",
+                   metric = "ROC",
+                   trControl = ctrl)
+
+model.qda <- train(x = hcv.train.x.bag,
+                   y = hcv.train.y,
+                   method = "qda",
+                   metric = "ROC",
+                   trControl = ctrl)
+
+model.nb <- train(x = hcv.train.x.bag,
+                  y = hcv.train.y,
+                  method = "nb",
+                  tuneGrid = expand.grid(
+                      usekernel = c(T, F),
+                      fL = 1,
+                      adjust = seq(.1, 3, by = .1)
+                  ),
+                  metric = "ROC",
+                  trControl = ctrl)
+plot(model.nb)
+model.nb$bestTune
+```
+
+```{r tree}
+set.seed(2022)
+model.rpart <- train(x = hcv.train.x.bag,
+                   y = hcv.train.y,
+                   method = "rpart",
+                   tuneGrid = data.frame(cp = exp(seq(-8, -3, leng = 100))),
+                   metric = "ROC",
+                   trControl = ctrl)
+ggplot(model.rpart, highlight = TRUE)
+plot(as.party(model.rpart$finalModel))
+model.rpart$bestTune
+
+
+model.ctree <- train(x = hcv.train.x.bag,
+                   y = hcv.train.y,
+                   method = "ctree",
+                   tuneGrid = data.frame(mincriterion = 1 - exp(seq(-2, -1, leng = 100))),
+                   metric = "ROC",
+                   trControl = ctrl)
+ggplot(model.ctree, highlight = TRUE)
+plot(model.ctree$finalModel)
+model.ctree$bestTune
+```
+```{r random_forest, cache=TRUE}
+set.seed(2022)
+#rf
+rf.grid <- expand.grid(mtry = 1:12,
+                       splitrule = "gini",
+                       min.node.size = seq(from = 1, to = 50, by = 5))
+model.rf <- train(hcv.train.x.bag,
+                hcv.train.y,
+                method = "ranger",
+                importance = "permutation",
+                tuneGrid = rf.grid,
+                metric = "ROC",
+                trControl = ctrl)
+tuning2 <- ggplot(model.rf, highlight = TRUE)
+model.rf$bestTune
+```
+
+```{r resample, cache=TRUE}
+res <- resamples(list(GLM = model.glm, GLMNET = model.glmn, GAM = model.gam, MARS = model.mars, CTREE = model.ctree, RPART = model.rpart, LDA = model.lda, QDA = model.qda, NB = model.nb, RF = model.rf))
+trainROC <- bwplot(res, metric = "ROC")
+summary(res)
+```
+
+
+```{r prediction, cache=TRUE}
+glm.pred <- predict(model.glm, newdata = hcv.test.x.bag, type = "prob")[,2]
+glmn.pred <- predict(model.glmn, newdata = hcv.test.x.bag, type = "prob")[,2]
+gam.pred <- predict(model.gam, newdata = hcv.test.x.bag, type = "prob")[,2]
+mars.pred <- predict(model.mars, newdata = hcv.test.x.bag, type = "prob")[,2]
+ctree.pred <- predict(model.ctree, newdata = hcv.test.x.bag, type = "prob")[,2]
+rpart.pred <- predict(model.rpart, newdata = hcv.test.x.bag, type = "prob")[,2]
+lda.pred <- predict(model.lda, newdata = hcv.test.x.bag, type = "prob")[,2]
+qda.pred <- predict(model.qda, newdata = hcv.test.x.bag, type = "prob")[,2]
+nb.pred <- predict(model.nb, newdata = hcv.test.x.bag, type = "prob")[,2]
+rf.pred <- predict(model.rf, newdata = hcv.test.x.bag, type = "prob")[,2]
+
+glm.roc <- roc(hcv.test.y, glm.pred)
+glmn.roc <- roc(hcv.test.y, glmn.pred)
+gam.roc <- roc(hcv.test.y, gam.pred)
+mars.roc <- roc(hcv.test.y, mars.pred)
+ctree.roc <- roc(hcv.test.y, ctree.pred)
+rpart.roc <- roc(hcv.test.y, rpart.pred)
+lda.roc <- roc(hcv.test.y, lda.pred)
+qda.roc <- roc(hcv.test.y, qda.pred)
+nb.roc <- roc(hcv.test.y, nb.pred)
+rf.roc <- roc(hcv.test.y, rf.pred)
+
+auc <- c(
+    glm.roc$auc[1],
+    glmn.roc$auc[1],
+    gam.roc$auc[1],
+    mars.roc$auc[1],
+    ctree.roc$auc[1],
+    rpart.roc$auc[1],
+    lda.roc$auc[1],
+    qda.roc$auc[1],
+    nb.roc$auc[1],
+    rf.roc$auc[1]
+)
+
+modelNames <- c(
+    "glm",
+    "glmn",
+    "gam",
+    "mars",
+    "ctree",
+    "rpart",
+    "lda",
+    "qda",
+    "nb",
+    "rf"
+)
+
+roc.plot <- ggroc(list(glm.roc, glmn.roc, gam.roc, mars.roc, ctree.roc, rpart.roc, lda.roc, qda.roc, nb.roc, rf.roc), legacy.axes = TRUE) + 
+    scale_color_discrete(labels = paste0(modelNames, "(", round(auc,4),")"), name = "Models AUC on Test set") + geom_abline(intercept = 0, slope = 1)
+roc.plot
+ggsave(filename = "./plots/testROC.png",plot = roc.plot, device = "png", width = 8, height = 6)
+```
+
+```{r vip,cache=TRUE}
+glm.vip <- varImp(model.glm)$importance
+glmn.vip <- varImp(model.glmn)$importance
+#gam.vip <- varImp(model.gam$finalModel)$importance
+mars.vip <- varImp(model.mars)
+ctree.vip <- varImp(model.ctree)$importance
+rpart.vip <- varImp(model.rpart)$importance
+lda.vip <- varImp(model.lda)$importance
+qda.vip <- varImp(model.qda)$importance
+nb.vip <- varImp(model.nb)$importance
+rf.vip <- varImp(model.rf)$importance
+
+vip1 <- vip(model.mars$finalModel)
+vip2 <- vip(model.rf$finalModel)
+vip <- grid.arrange(vip1,vip2)
+ggsave(filename = "./plots/vip.png",plot = vip, device = "png", width = 8, height = 6)
+```
+
+

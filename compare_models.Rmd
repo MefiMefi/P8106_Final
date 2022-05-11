@@ -1,0 +1,33 @@
+---
+title: "compare_models"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+library(caret)
+# General figure set up
+knitr::opts_chunk$set(
+  # hide warning messages
+  warning = FALSE
+)
+```
+
+## Conclusion
+
+```{r compare}
+model.svml <- readRDS("models/svml.rds")
+model.svmr <- readRDS("models/svmr.rds")
+
+model.ctree <- load.Rdata("models/model.ctree.RData")
+model.gam <- load("models/model.gam.RData")
+model.gbm <- load("models/model.gbm.RData")
+model.glm <- load("models/model.glm.RData")
+model.glmn <- load("models/model.glmn.RData")
+model.lda <- load("models/model.lda.RData")
+model.mars <- load("models/model.mars.RData")
+model.nb <- load("models/model.nb.RData")
+model.qda <- load("models/model.qda.RData")
+model.rf <- load("models/model.rf.RData")
+model.rpart <- load("models/model.rpart.RData")
+```
+

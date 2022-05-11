@@ -67,7 +67,7 @@ hcv %>%
 
 ## 3.1 Data Preprocessing
 
-The data is already prepared in .csv table format. However, the dataset has 31 missing values and we consider them to be missing-at-random (MAR). We implemented 5-nearest neighbor imputation on the original data to accommodate those missing values, then applied Box Cox transformation and standardization (center and scale) to re-scale the numerical covariates so they are approximately normally distributed.
+The data is already prepared in .csv table format. However, the dataset has 31 missing values and we consider them to be missing-at-random (MAR). We implemented 5-nearest neighbor imputation on the original data to accommodate those missing values, then applied Box Cox transformation and standardization (center and scale) to re-scale the numerical covariates so they are approximately normally distributed. This normalization helps us reduce the influence from outliers and achieve better classification result.
 
 ## 3.2 Predictors
 

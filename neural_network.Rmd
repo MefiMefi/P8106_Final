@@ -1,0 +1,58 @@
+---
+title: "neural_network"
+author: "Renjie Wei"
+date: '2022-05-11'
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(tidyverse)
+library(ggplot2)
+library(skimr)
+library(visdat)
+library(reshape2)
+library(caret)
+library(vip)
+library(mgcv)
+library(klaR)
+library(pROC)
+library(ggridges)
+library(corrplot)
+library(AppliedPredictiveModeling)
+library(patchwork)
+library(Hmisc)
+library(reshape)
+library(recipes)
+library(glmnet)
+library(rpart.plot)
+library(MASS)
+library(nnet)
+library(xgboost)
+library(NeuralNetTools)  
+library(Ckmeans.1d.dp)
+library(kableExtra)
+```
+```{r}
+load("train.RData")
+load("test.RData")
+```
+
+```{r}
+set.seed(2022)
+ctrl <- trainControl(method = "repeatedcv",
+                    repeats = 5,
+                    #summaryFunction = twoClassSummary,
+                    classProbs = TRUE)
+model.nnet<- train(Category~.,
+                   data = hcv.train.df,
+                   method = "nnet",
+                   tuneGrid =  expand.grid(decay = exp(seq(-1, 2.5, len = 15)),
+                                           size = c(1:5)),
+                   metric = "Accuracy",
+                   trControl = ctrl)
+
+nnet.pred<- predict(model.nnet, newdata = hcv.test.df, type = "prob")[,1]
+saveRDS(model.nnet, "./models/model.nnet.rds")
+```
+

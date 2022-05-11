@@ -23,7 +23,7 @@ header-includes:
 ---
 
 ```{r setup, include=FALSE}
-knitr::opts_chunk$set(echo = TRUE, warning = F, message = F)
+knitr::opts_chunk$set(echo = FALSE, warning = F, message = F)
 ```
 
 # 1 Introduction
@@ -91,11 +91,27 @@ Specifically, here shows the predictors in the models:
 
 models ...
 
+Since the traditional approach in HCV diagnostic pathways is related to decision tree, two tree methods were used: the conditional inference trees (CTREE) and regression tree (RPART). The tree methods can be displayed graphically and more easily understood by physicians. Taking the diagnosis of HCV as a classification problem, other machine learning models were also trained for the purpose our project. We used the generalized additive model model (GAM), the generalized linear regression models, GLMNET (with penalization) and GLM (without penalization), linear and quadratic discriminant analysis models (LDA, QDA), as well as naive bayes (NB). **TODO  We also implemented.......** 
+All the models were trained using the package $caret$. The regression models (GLM, LDA, etc. al.) can accept mixture of variables which is suitable for our case. NB is useful when predictor number is large. GAM model can include any quadratically penalized GLM and a variety of other models, which induces great flexibility. Linear regression model also assumed the independence of the predictors. 
+
 ## 3.3 Tuning parameters
+
+```{r tuning}
+```
+
 
 ## 3.4 Training Performance
 
+```{r training_accuracy}
+accuracy_plot <- readRDS("./accuracy.rds");accuracy_plot
+```
+
 ## 3.5 Test performance
+
+```{r test_performance}
+kable_out <- readRDS("error_rate.rds");kable_out
+```
+
 
 ## 3.6 Variable Importance
 

@@ -73,7 +73,8 @@ res <- resamples(list(GLMN = model.glmn,
                       SVMR = model.svmr,
                       NNET = model.nnet))
 
-bwplot(res, metrc = "Accuracy")
+accuracy_plot <- bwplot(res, metrc = "Accuracy")
+saveRDS(accuracy_plot,"accuracy.rds")
 ```
 
 ## Training Accuracy
@@ -100,4 +101,9 @@ error_rate <- function(model_list){
 error_rate <- error_rate(models);error_rate
 ```
 
+```{r TABLE}
+table_out <- data.frame(models = model_names, testing_error_rate = error_rate)
+kable_out <- table_out %>% knitr::kable(col.names = c("Models", "Testing Error Rate"), digits = 5)
+saveRDS(kable_out, "error_rate.rds")
+```
 

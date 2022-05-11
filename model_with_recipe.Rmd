@@ -292,23 +292,26 @@ model.rf$bestTune
 set.seed(2022)
 cl <- makePSOCKcluster(no_cores)
 registerDoParallel(cl)
-adaboost.grid = expand.grid(n.trees = c(4000,5000,6000),
-                            interaction.depth = 1:6,
-                            shrinkage = c(0.001,0.002,0.004),
-                            n.minobsinnode = 1)
 
-model.gbm = train(Category~.,
-                  data = hcv.train.df,
-                  na.action = na.pass,
-                  tuneGrid = adaboost.grid,
+gbm.grid <- expand.grid(n.trees = c(2000, 3000, 4000, 5000, 6000),
+                            interaction.depth = 1:8,
+                            shrinkage = c(0.03,0.05,0.07),
+                            n.minobsinnode = 1)
+set.seed(2022)
+model.gbm <- train(Category~.,
+                   data = hcv.train.df,
+                  tuneGrid = gbm.grid,
                   trControl = ctrl,
                   method = "gbm",
                   distribution = "adaboost",
                   metric = "Accuracy",
                   verbose = FALSE)
+
+ggplot(model.gbm, highlight = TRUE)
+model.gbm$bestTune
+# Stop the parallel computing cluster
 stopCluster(cl)
 registerDoSEQ()
-ggplot(model.gbm,highlight = T)
 
 ```
 
@@ -354,7 +357,14 @@ model.svmr$bestTune
 
 
 ```{r nn}
-
+set.seed(2022)
+model.nnet<- train(Category~.,
+                   data = hcv.train.df,
+                   method = "nnet",
+                   tuneGrid =  expand.grid(decay = exp(seq(-3, 2, len = 20)),
+                                           size = c(1:5)),
+                   metric = "Accuracy",
+                   trControl = ctrl)
 ```
 
 ```{r save_models}
@@ -371,4 +381,5 @@ saveRDS(model.rpart,file = "./models/model.rpart.rds")
 saveRDS(model.gbm, file = "./models/model.gbm.rds")
 saveRDS(model.svml, "./models/model.svml.rds")
 saveRDS(model.svmr, "./models/model.svmr.rds")
+saveRDS(model.nnet, "./models/model.nnet.rds")
 ```

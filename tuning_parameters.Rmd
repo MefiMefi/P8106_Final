@@ -116,9 +116,20 @@ svmr.tune =
          x = "Regularizaiton parameter")
 
 (mars.tune+nnet.tune)/(rpart.tune+ctree.tune)/(nb.tune+ svml.tune)
-
 (glmn.tune + svmr.tune)/(rf.tune+gbm.tune)
 ```
 
+```{r save_images}
+saveRDS(mars.tune,"./tuningPlots/mars.tune.rds")
+saveRDS(nnet.tune,"./tuningPlots/nnet.tune.rds")
+saveRDS(rpart.tune,"./tuningPlots/rpart.tune.rds")
+saveRDS(ctree.tune,"./tuningPlots/ctree.tune.rds")
+saveRDS(nb.tune,"./tuningPlots/nb.tune.rds")
+saveRDS(svml.tune,"./tuningPlots/svml.tune.rds")
+saveRDS(glmn.tune,"./tuningPlots/glmn.tune.rds")
+saveRDS(svmr.tune,"./tuningPlots/svmr.tune.rds")
+saveRDS(rf.tune,"./tuningPlots/rf.tune.rds")
+saveRDS(gbm.tune,"./tuningPlots/gbm.tune.rds")
+```
 
 

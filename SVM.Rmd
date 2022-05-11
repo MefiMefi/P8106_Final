@@ -8,6 +8,10 @@ output: pdf_document
 library(tidyverse)
 library(caret)
 library(recipes)
+library(vip)
+library(pdp)
+library(lime)
+library(kernlab)
 
 theme_set(theme_minimal() + theme(legend.position = "bottom"))
 
@@ -100,12 +104,17 @@ svml.fit = train(Category~.,
 
 plot(svml.fit, highlight = TRUE, xTrans = log)
 svml.fit$bestTune
-saveRDS(svml.fit, "svml.rds")
+#saveRDS(svml.fit, "svml.rds")
+
+pred.svml = predict(svml.fit, newdata = hcv.test.df)
+confusionMatrix(data = pred.svml,
+                reference = hcv.test.df$Category)
+
 ```
 
 ```{r}
-svmr.grid = expand.grid(C = exp(seq(-1,4,len = 20)),
-                        sigma = exp(seq(-6,-2,len=20)))
+svmr.grid = expand.grid(C = exp(seq(-1,4,len = 50)),
+                        sigma = exp(seq(-6,-2,len=50)))
 
 set.seed(2022)
 svmr.fit = train(Category~.,
@@ -122,7 +131,81 @@ myPar = list(superpose.symbol = list(col = myCol),
 plot(svmr.fit, hightlight = TRUE, par.settings = myPar)
 
 svmr.fit$bestTune
-saveRDS(svmr.fit, "svmr.rds")
+#saveRDS(svmr.fit, "svmr.rds")
 
+pred.svmr = predict(svmr.fit, newdata = hcv.test.df)
+confusionMatrix(data = pred.svmr,
+                reference = hcv.test.df$Category)
+
+```
+
+
+```{r}
+library(e1071)
+test.fit = svm(Category~.,
+               data = hcv.train.df,
+               kernel = "radial",
+               cost = svmr.fit$bestTune$C,
+               gamma = svmr.fit$bestTune$sigma,
+               #for pdp
+               probability = TRUE)
+predict(test.fit, newdata = hcv.test.df)
+
+#classify
+par(mfrow = c(1,2))
+plot(test.fit, hcv.train.df,
+     BIL ~ AST,
+     slice = list(Age = 0, ALB = 0, ALP = 0, ALT = 0,
+                  CHE = 0, CHOL = 0, CREA = 0, GGT = 1, PROT = 1),
+     grid = 100)
+plot(test.fit2, hcv.train.df,
+     BIL ~ AST,
+     slice = list(Age = 0, ALB = 0, ALP = 0, ALT = 0,
+                  CHE = 0, CHOL = 0, CREA = 0, GGT = 1, PROT = 1),
+     grid = 100)
+
+#vip
+w = t(test.fit$coefs) %*% test.fit$SV
+w <- apply(w, 2, function(v){sqrt(sum(v^2))})
+w <- sort(w)
+print(w)
+
+barplot(w, las = 2, horiz = TRUE, cex.names = .9, col = colorRampPalette(colors = c("cyan", "blue"))(13), xlim = c(0,25))
+
+set.seed(2827)  # for reproducibility
+vip(test.fit, method = "permute", nsim = 5, train = hcv.train.df, 
+    target = "Attrition", metric = "auc", reference_class = "Yes")
+
+#pdp
+features = c("AST", "BIL", "GGT", "PROT", "ALT", "ALP")
+
+pdps <- lapply(features, function(x) {
+  partial(test.fit, pred.var = x, which.class = 2,
+          prob = TRUE, plot = TRUE, plot.engine = "ggplot2")
+})
+grid.arrange(grobs = pdps,  ncol = 3)
+```
+
+
+```{r}
+library(rgl)
+library(misc3d)
+
+plot3d(hcv.test.df[c(5,6,7)], col = as.numeric(hcv.test.df$Category), size = 4)
+
+# Get decision values for a new data grid
+len = 10
+newdat.list = lapply(hcv.test.df[c(5,6,7)], function(x) seq(min(x), max(x), len=len))
+newdat      = expand.grid(newdat.list)
+
+new = data.frame(Age = rep(0,len^3), Sex = c(rep(0,(len^3)/2), rep(1,(len^3)/2)), ALB = rep(0,len^3), ALP = rep(0, len^3), ALT = newdat$ALT, AST = newdat$AST, BIL = newdat$BIL, CHE = rep(0,len^3), CHOL = rep(0,len^3), CREA = rep(0,len^3), GGT = rep(1,len^3), PROT = rep(1.3, len^3))
+new = as.tibble(new) %>% mutate(Sex = factor(Sex))
+
+newdat.pred = predict(test.fit, newdata = new, decision.values = TRUE)
+newdat.dv   = attr(newdat.pred, 'decision.values')
+newdat.dv   = array(newdat.dv, dim=rep(len, 3))
+
+# Fit/plot an isosurface to the decision boundary
+contour3d(newdat.dv, level=0, x=newdat.list$ALT, y=newdat.list$AST, z=newdat.list$BIL, add=T, alpha = 0.6, color = "skyblue")
 ```
 

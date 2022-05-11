@@ -123,19 +123,25 @@ The best tuned neural network model has 5 hidden units and decay rate of 0.14.
 ```{r tuning}
 ```
 
-
 ## 3.4 Training Performance
+
+We address the performance of each model by the repeated 10-folds cross-validation accuracy scores based on the training set. We also look at the `kappa` value that ranges from -1 to 1, which measures how well the classification performs compared to random classifier. Therefore for both accuracy and `kappa`, the larger the better.
 
 ```{r training_accuracy}
 accuracy_plot <- readRDS("./accuracy.rds");accuracy_plot
 ```
 
+As shown in the figure above, all of the models perform generally well. The best model with highest accuracy and highest kappa is the support vector machine model with radial kernel. It worth notice that the traditionally used tree methods were not outstanding comparing with the other models. 
+
 ## 3.5 Test performance
+
+For test performance, we address the performance of each model by its error rate. 
 
 ```{r test_performance}
 kable_out <- readRDS("error_rate.rds");kable_out
 ```
 
+Not surprisingly, the SVM models has the smallest error rate of 0.02174 i.e. accuracy of 0.9783, therefore they have the best performance in prediction among all the models. 
 
 ## 3.6 Variable Importance
 

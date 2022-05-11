@@ -1,0 +1,402 @@
+---
+title: "Untitled"
+author: "Renjie Wei"
+date: '2022-03-19'
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, warning = FALSE, message = FALSE)
+```
+
+```{r packages}
+setwd(dirname(rstudioapi::getSourceEditorContext()$path))
+library(gridExtra)
+library(ggplot2)
+library(corrplot)
+library(ResourceSelection)
+library(ISLR)
+library(pROC)
+library(tidyverse)
+library(summarytools)
+library(glmnet)
+library(caret)
+library(plotmo)
+library(readr)
+library(mlbench)
+library(gtsummary)
+library(rpart)
+library(rpart.plot)
+library(party)
+library(partykit)
+library(vip)
+library(recipes)
+
+
+library(skimr)
+library(visdat)
+library(reshape2)
+library(DataExplorer)
+library(ggcorrplot)
+library(mgcv)
+library(klaR)
+library(ggridges)
+library(AppliedPredictiveModeling)
+library(patchwork)
+library(Hmisc)
+library(groupdata2)
+library(reshape)
+library(glmnet)
+library(MASS)
+```
+
+
+```{r load_data}
+theme_set(theme_bw())
+hcv <- read.csv("HepatitisCdata.csv")[,-1]
+#sum(is.na(hcv)) #31
+hcv$Category <- case_when(hcv$Category == '0=Blood Donor' ~ 0,
+                          hcv$Category == '0s=suspect Blood Donor' ~ 0,
+                          TRUE ~ 1)
+hcv$Sex <- factor(hcv$Sex, levels = c("f", "m"))
+
+
+hcv.numeric <- hcv[,!names(hcv) %in% c("Category", "Sex")]
+hcv.factor <- hcv[,!names(hcv) %in% colnames(hcv.numeric)]
+hcv.factor <- hcv.factor[,!names(hcv.factor) %in% "Category"]
+
+y <- hcv$Category
+hcv$Category <- as.factor(ifelse(hcv$Category == 1, "patient", "donor"))
+hcv$Sex <- factor(as.numeric(hcv$Sex)-1)
+```
+
+```{r train_test_split}
+set.seed(2022)
+rowTrain <- createDataPartition(y = hcv$Category, p = 0.7, list = FALSE)
+options(na.action='na.pass')
+
+hcv.train.df <- hcv[rowTrain,]
+hcv.test.df <- hcv[-rowTrain,]
+
+hcv.train.x <- model.matrix(~.-1,hcv[rowTrain,])
+hcv.train.y <- hcv$Category[rowTrain]
+hcv.test.x <- model.matrix(~.-1,hcv[-rowTrain,])
+hcv.test.y <- hcv$Category[-rowTrain]
+```
+
+
+```{r preprocess_with_impute}
+preprocess_recipe = recipe(Category ~ ., data = hcv.train.df) %>%
+    step_knnimpute(all_predictors(), neighbors = 5) %>%  
+    step_BoxCox(all_numeric_predictors()) %>% 
+    step_center(all_numeric_predictors()) %>% 
+    step_scale(all_numeric_predictors())
+```
+
+```{r glm, cache=TRUE}
+ctrl <- trainControl(method = "repeatedcv",
+                    repeats = 5,
+                    #summaryFunction = twoClassSummary,
+                    classProbs = TRUE,
+                    preProcOptions = list(k = 5))
+
+set.seed(2022)
+# glm
+model.glm <- train(Category~.,
+                   data = hcv.train.df,
+                   method = "glm",
+                   metric = "Accuracy",
+                   trControl = ctrl,
+                   na.action = na.pass,
+                   preProcess = c("knnImpute", "center", "scale", "BoxCox"))
+# penalized glm
+
+library(parallel) 
+library(doParallel)
+# Calculate the number of cores
+no_cores <- detectCores() - 1
+
+# create the cluster for caret to use
+# CPU usage may go up to 100%
+cl <- makePSOCKcluster(no_cores)
+registerDoParallel(cl)
+
+ctrl.glmn <- trainControl(method = "repeatedcv",
+                    repeats = 5,
+                    classProbs = TRUE,
+                    preProcOptions = list(k = 5))
+
+
+glmnGrid <- expand.grid(alpha = seq(0, 1, length = 21), lambda = exp(seq(2,-6, length = 50)))
+model.glmn <- train(Category~.,
+                   data = hcv.train.df,
+                   method = "glmnet",
+                   tuneGrid = glmnGrid,
+                   metric = "Accuracy",
+                   trControl = ctrl.glmn,
+                   na.action = na.pass,
+                   preProcess = c("knnImpute", "center", "scale", "BoxCox"))
+
+stopCluster(cl)
+registerDoSEQ()
+
+
+model.glmn$bestTune
+myCol <- rainbow(50)
+myPar <- list(
+    superpose.symbol = list(col = myCol),
+    superpose.line = list(col = myCol)
+)
+tuning <- ggplot(model.glmn,par.settings = myPar, highlight = TRUE) + scale_x_log10() + ggtitle("GLM tuning parameters")
+
+tuning
+```
+
+```{r gam, cache=TRUE}
+set.seed(2022)
+cl <- makePSOCKcluster(no_cores)
+registerDoParallel(cl)
+model.gam <- train(Category~.,
+                   data = hcv.train.df,
+                   method = "gam",
+                   metric = "Accuracy",
+                   trControl = ctrl,
+                   na.action = na.pass,
+                   preProcess = c("knnImpute", "center", "scale", "BoxCox"))
+stopCluster(cl)
+registerDoSEQ()
+model.gam$finalModel
+model.gam$bestTune
+```
+
+```{r mars, cache=TRUE}
+set.seed(2022)
+cl <- makePSOCKcluster(no_cores)
+registerDoParallel(cl)
+model.mars <- train(Category~.,
+                   data = hcv.train.df,
+                   method = "earth",
+                   tuneGrid = expand.grid(degree = 1:4, nprune = 2:23),
+                   metric = "Accuracy",
+                   trControl = ctrl,
+                   na.action = na.pass,
+                   preProcess = c("knnImpute", "center", "scale", "BoxCox"))
+stopCluster(cl)
+registerDoSEQ()
+
+tuning1 <- ggplot(model.mars, highlight  = TRUE)
+model.mars$finalModel
+model.mars$bestTune
+tuning1
+```
+```{r lda}
+cl <- makePSOCKcluster(no_cores)
+registerDoParallel(cl)
+model.lda <- train(Category~.,
+                   data = hcv.train.df,
+                   method = "lda",
+                   metric = "Accuracy",
+                   trControl = ctrl,
+                   na.action = na.pass,
+                   preProcess = c("knnImpute", "center", "scale", "BoxCox"))
+stopCluster(cl)
+registerDoSEQ()
+
+cl <- makePSOCKcluster(no_cores)
+registerDoParallel(cl)
+model.qda <- train(Category~.,
+                   data = hcv.train.df,
+                   method = "qda",
+                   metric = "Accuracy",
+                   trControl = ctrl,
+                   na.action = na.pass,
+                   preProcess = c("knnImpute", "center", "scale", "BoxCox"))
+stopCluster(cl)
+registerDoSEQ()
+
+cl <- makePSOCKcluster(no_cores)
+registerDoParallel(cl)
+model.nb <- train(Category~.,
+                  data = hcv.train.df,
+                  method = "nb",
+                  tuneGrid = expand.grid(
+                      usekernel = c(T, F),
+                      fL = 1,
+                      adjust = seq(.1, 3, by = .1)
+                  ),
+                  metric = "Accuracy",
+                  trControl = ctrl,
+                  na.action = na.pass,
+                  preProcess = c("knnImpute", "center", "scale", "BoxCox"))
+stopCluster(cl)
+registerDoSEQ()
+plot(model.nb)
+model.nb$bestTune
+```
+
+```{r tree}
+set.seed(2022)
+cl <- makePSOCKcluster(no_cores)
+registerDoParallel(cl)
+model.rpart <- train(Category~.,
+                     data = hcv.train.df,
+                     method = "rpart",
+                     tuneGrid = data.frame(cp = exp(seq(-8, -3, leng = 100))),
+                     metric = "Accuracy",
+                     trControl = ctrl,
+                     na.action = na.pass,
+                     preProcess = c("knnImpute", "center", "scale", "BoxCox"))
+stopCluster(cl)
+registerDoSEQ()
+
+ggplot(model.rpart, highlight = TRUE)
+plot(as.party(model.rpart$finalModel))
+model.rpart$bestTune
+
+
+cl <- makePSOCKcluster(no_cores)
+registerDoParallel(cl)
+
+model.ctree <- train(Category~.,
+                     data = hcv.train.df,
+                     method = "ctree",
+                     tuneGrid = data.frame(mincriterion = 1 - exp(seq(-2, -1, leng = 100))),
+                     metric = "Accuracy",
+                     trControl = ctrl,
+                     na.action = na.pass,
+                     preProcess = c("knnImpute", "center", "scale", "BoxCox"))
+stopCluster(cl)
+registerDoSEQ()
+
+ggplot(model.ctree, highlight = TRUE)
+plot(model.ctree$finalModel)
+model.ctree$bestTune
+```
+```{r random_forest, cache=TRUE}
+set.seed(2022)
+
+cl <- makePSOCKcluster(no_cores)
+registerDoParallel(cl)
+#rf
+rf.grid <- expand.grid(mtry = 1:12,
+                       splitrule = "gini",
+                       min.node.size = seq(from = 1, to = 50, by = 5))
+model.rf <- train(Category~.,
+                  data = hcv.train.df,
+                  method = "ranger",
+                  importance = "permutation",
+                  tuneGrid = rf.grid,
+                  metric = "Accuracy",
+                  trControl = ctrl,
+                  na.action = na.pass,
+                  preProcess = c("knnImpute", "center", "scale", "BoxCox"))
+stopCluster(cl)
+registerDoSEQ()
+tuning2 <- ggplot(model.rf, highlight = TRUE)
+model.rf$bestTune
+```
+
+```{r adaboost}
+set.seed(2022)
+cl <- makePSOCKcluster(no_cores)
+registerDoParallel(cl)
+adaboost.grid = expand.grid(n.trees = c(4000,5000,6000),
+                            interaction.depth = 1:6,
+                            shrinkage = c(0.001,0.002,0.004),
+                            n.minobsinnode = 1)
+
+model.gbm = train(Category~.,
+                  data = hcv.train.df,
+                  na.action = na.pass,
+                  tuneGrid = adaboost.grid,
+                  trControl = ctrl,
+                  method = "gbm",
+                  distribution = "adaboost",
+                  metric = "Accuracy",
+                  verbose = FALSE,
+                  preProcess = c("knnImpute", "center", "scale", "BoxCox"))
+ggplot(model.gbm,highlight = T)
+```
+
+```{r nn}
+
+```
+
+```{r save_models}
+save(model.glm, file = "./models/model.glm.RData")
+save(model.glmn, file = "./models/model.glmn.RData")
+save(model.gam, file = "./models/model.gam.RData")
+save(model.mars, file = "./models/model.mars.RData")
+save(model.lda, file = "./models/model.lda.RData")
+save(model.qda, file = "./models/model.qda.RData")
+save(model.nb, file = "./models/model.nb.RData")
+save(model.ctree, file = "./models/model.ctree.RData")
+save(model.rf, file = "./models/model.rf.RData")
+save(model.rpart,file = "./models/model.rpart.RData")
+save(model.gbm, file = "./models/model.gbm.RData")
+```
+
+
+```{r resample, cache=TRUE}
+res <- resamples(list(GLM = model.glm, GLMNET = model.glmn, GAM = model.gam, MARS = model.mars, CTREE = model.ctree, RPART = model.rpart, LDA = model.lda, QDA = model.qda, NB = model.nb, RF = model.rf))
+trainROC <- bwplot(res, metric = "ROC")
+summary(res)
+```
+
+
+```{r prediction, cache=TRUE}
+glm.pred <- predict(model.glm, newdata = hcv.test.x.bag, type = "prob")[,2]
+glmn.pred <- predict(model.glmn, newdata = hcv.test.x.bag, type = "prob")[,2]
+gam.pred <- predict(model.gam, newdata = hcv.test.x.bag, type = "prob")[,2]
+mars.pred <- predict(model.mars, newdata = hcv.test.x.bag, type = "prob")[,2]
+ctree.pred <- predict(model.ctree, newdata = hcv.test.x.bag, type = "prob")[,2]
+rpart.pred <- predict(model.rpart, newdata = hcv.test.x.bag, type = "prob")[,2]
+lda.pred <- predict(model.lda, newdata = hcv.test.x.bag, type = "prob")[,2]
+qda.pred <- predict(model.qda, newdata = hcv.test.x.bag, type = "prob")[,2]
+nb.pred <- predict(model.nb, newdata = hcv.test.x.bag, type = "prob")[,2]
+rf.pred <- predict(model.rf, newdata = hcv.test.x.bag, type = "prob")[,2]
+
+glm.roc <- roc(hcv.test.y, glm.pred)
+glmn.roc <- roc(hcv.test.y, glmn.pred)
+gam.roc <- roc(hcv.test.y, gam.pred)
+mars.roc <- roc(hcv.test.y, mars.pred)
+ctree.roc <- roc(hcv.test.y, ctree.pred)
+rpart.roc <- roc(hcv.test.y, rpart.pred)
+lda.roc <- roc(hcv.test.y, lda.pred)
+qda.roc <- roc(hcv.test.y, qda.pred)
+nb.roc <- roc(hcv.test.y, nb.pred)
+rf.roc <- roc(hcv.test.y, rf.pred)
+
+auc <- c(
+    glm.roc$auc[1],
+    glmn.roc$auc[1],
+    gam.roc$auc[1],
+    mars.roc$auc[1],
+    ctree.roc$auc[1],
+    rpart.roc$auc[1],
+    lda.roc$auc[1],
+    qda.roc$auc[1],
+    nb.roc$auc[1],
+    rf.roc$auc[1]
+)
+
+modelNames <- c(
+    "glm",
+    "glmn",
+    "gam",
+    "mars",
+    "ctree",
+    "rpart",
+    "lda",
+    "qda",
+    "nb",
+    "rf"
+)
+
+roc.plot <- ggroc(list(glm.roc, glmn.roc, gam.roc, mars.roc, ctree.roc, rpart.roc, lda.roc, qda.roc, nb.roc, rf.roc), legacy.axes = TRUE) + 
+    scale_color_discrete(labels = paste0(modelNames, "(", round(auc,4),")"), name = "Models AUC on Test set") + geom_abline(intercept = 0, slope = 1)
+roc.plot
+ggsave(filename = "./plots/testROC.png",plot = roc.plot, device = "png", width = 8, height = 6)
+```
+
+

@@ -1,0 +1,152 @@
+---
+title: "refit_model"
+author: "Renjie Wei"
+date: '2022-05-11'
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(tidyverse)
+library(ggplot2)
+library(skimr)
+library(visdat)
+library(reshape2)
+library(caret)
+library(vip)
+library(mgcv)
+library(klaR)
+library(pROC)
+library(ggridges)
+library(corrplot)
+library(AppliedPredictiveModeling)
+library(patchwork)
+library(Hmisc)
+library(reshape)
+library(recipes)
+library(glmnet)
+library(rpart.plot)
+library(MASS)
+library(nnet)
+library(xgboost)
+library(NeuralNetTools)  
+library(Ckmeans.1d.dp)
+library(kableExtra)
+```
+```{r}
+load("train.RData")
+load("test.RData")
+```
+
+```{r}
+set.seed(2022)
+ctrl <- trainControl(method = "repeatedcv",
+                    repeats = 5,
+                    #summaryFunction = twoClassSummary,
+                    classProbs = TRUE)
+library(parallel) 
+library(doParallel)
+# Calculate the number of cores
+no_cores <- detectCores() - 1
+
+# create the cluster for caret to use
+# CPU usage may go up to 100%
+cl <- makePSOCKcluster(no_cores)
+registerDoParallel(cl)
+
+glmnGrid <- expand.grid(alpha = seq(0, 1, length = 21), lambda = exp(seq(1,-7, length = 50)))
+model.glmn <- train(Category~.,
+                   data = hcv.train.df,
+                   method = "glmnet",
+                   tuneGrid = glmnGrid,
+                   metric = "Accuracy",
+                   trControl = ctrl,
+                   na.action = na.pass)
+
+stopCluster(cl)
+registerDoSEQ()
+
+saveRDS(model.glmn, "./models/model.glmn.rds")
+```
+
+```{r re_gbm}
+
+```
+
+```{r re_trees}
+set.seed(2022)
+cl <- makePSOCKcluster(no_cores)
+registerDoParallel(cl)
+model.rpart <- train(Category~.,
+                     data = hcv.train.df,
+                     method = "rpart",
+                     tuneGrid = data.frame(cp = exp(seq(-4, 0, leng = 100))),
+                     metric = "Accuracy",
+                     trControl = ctrl,
+                     na.action = na.pass)
+stopCluster(cl)
+registerDoSEQ()
+
+ggplot(model.rpart, highlight = TRUE)
+plot(as.party(model.rpart$finalModel))
+model.rpart$bestTune
+
+
+cl <- makePSOCKcluster(no_cores)
+registerDoParallel(cl)
+set.seed(2022)
+model.ctree <- train(Category~.,
+                     data = hcv.train.df,
+                     method = "ctree",
+                     tuneGrid = data.frame(mincriterion = 1 - exp(seq(-4, -1, leng = 100))),
+                     metric = "Accuracy",
+                     trControl = ctrl,
+                     na.action = na.pass)
+stopCluster(cl)
+registerDoSEQ()
+
+ggplot(model.ctree, highlight = TRUE)
+plot(model.ctree$finalModel)
+model.ctree$bestTune
+```
+```{r boost_refit}
+set.seed(2022)
+cl <- makePSOCKcluster(no_cores)
+registerDoParallel(cl)
+adaboost.grid = expand.grid(n.trees = c(6000,7000,8000,9000),
+                            interaction.depth = 1:6,
+                            shrinkage = c(
+                                0.001,
+                                0.002,
+                                0.003,
+                                0.004,
+                                0.005,
+                                0.006,
+                                0.007,
+                                0.008,
+                                0.009,
+                                0.010),
+                            n.minobsinnode = 1)
+
+model.gbm = train(Category~.,
+                  data = hcv.train.df,
+                  na.action = na.pass,
+                  tuneGrid = adaboost.grid,
+                  trControl = ctrl,
+                  method = "gbm",
+                  distribution = "adaboost",
+                  metric = "Accuracy",
+                  verbose = FALSE)
+stopCluster(cl)
+registerDoSEQ()
+ggplot(model.gbm,highlight = T)
+```
+
+
+```{r}
+saveRDS(model.ctree, file = "./models/model.ctree.rds")
+saveRDS(model.rf, file = "./models/model.rf.rds")
+saveRDS(model.rpart,file = "./models/model.rpart.rds")
+```
+
+

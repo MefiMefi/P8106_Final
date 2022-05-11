@@ -1,0 +1,124 @@
+---
+title: "tuning_parameters"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+library(gridExtra)
+library(ggplot2)
+library(corrplot)
+library(ResourceSelection)
+library(ISLR)
+library(pROC)
+library(glmnet)
+library(caret)
+library(plotmo)
+library(gtsummary)
+library(readr)
+
+library(MASS)
+library(mlbench)
+
+library(pdp)
+library(vip)
+library(AppliedPredictiveModeling)
+
+library(rpart)
+library(rpart.plot)
+library(party)
+library(partykit)
+
+library(tidyverse)
+# General figure set up
+knitr::opts_chunk$set(
+  # hide warning messages
+  warning = FALSE
+)
+```
+
+## Conclusion
+
+```{r compare}
+model.svml <- readRDS("models/model.svml.rds")
+model.svmr <- readRDS("models/model.svmr.rds")
+model.ctree <- readRDS("models/model.ctree.rds")
+model.gam <- readRDS("models/model.gam.rds")
+model.gbm <- readRDS("models/model.gbm.rds")
+model.glm <- readRDS("models/model.glm.rds")
+model.glmn <- readRDS("models/model.glmn.rds")
+model.lda <- readRDS("models/model.lda.rds")
+model.mars <- readRDS("models/model.mars.rds")
+model.nb <- readRDS("models/model.nb.rds")
+model.qda <- readRDS("models/model.qda.rds")
+model.rf <- readRDS("models/model.rf.rds")
+model.rpart <- readRDS("models/model.rpart.rds")
+model.nnet <- readRDS("models/model.nnet.rds")
+```
+
+
+```{r tuning_param}
+theme_set(theme_bw() + theme(
+  legend.position = "bottom",
+  plot.title = element_text(hjust = 0.5)
+))
+glmn.res = model.glmn$results
+glmn.tune = 
+    glmn.res %>%
+    mutate(best_lambda = model.glmn$bestTune$lambda) %>%
+    ggplot(aes(x = lambda, y = Accuracy, group = alpha, color = alpha)) + 
+    geom_point(shape = 1) +
+    geom_point(aes(best_lambda, max(Accuracy)), size = 5, shape = 5, color = "black") +
+    geom_line() + 
+    scale_x_log10() +
+    scale_color_gradientn(colors = rainbow(50)) +
+    labs(title = "Elastic Net",
+         subtitle = "(alpha = 0.75, lambda = 0.00149)",
+         y = "Accuracy",
+         x = "Regularizaiton parameter")
+
+
+rf.tune = 
+    ggplot(model.rf, highlight = T) + labs(title = "Random Forest", y = "Accuracy")
+
+rpart.tune = 
+    ggplot(model.rpart, highlight = T) + labs(title = "CART", y = "Accuracy")
+
+ctree.tune = 
+    ggplot(model.ctree, highlight = T) + labs(title = "CIT", y = "Accuracy")
+
+gbm.tune = 
+    ggplot(model.gbm, highlight = T) + labs(title = "AdaBoost", y = "Accuracy")
+
+mars.tune = 
+    ggplot(model.mars, highlight = T) + labs(title = "MARS", y = "Accuracy")
+
+nnet.tune = 
+    ggplot(model.nnet, highlight = T) + labs(title = "Neural Network", y = "Accuracy")
+
+nb.tune = 
+    ggplot(model.nb, highlight = T) + labs(title = "Naive-Bayesian", y = "Accuracy")
+
+svml.tune = 
+    ggplot(model.svml, highlight = T) + labs(title = "SVM-Linear", y = "Accuracy")
+
+svmr.tune = 
+    model.svmr$results %>%
+    mutate(best_sigma = model.svmr$bestTune$sigma) %>%
+    ggplot(aes(x = sigma, y = Accuracy, group = C, color = C)) + 
+    geom_point(shape = 1) +
+    geom_point(aes(best_sigma, max(Accuracy)), size = 5, shape = 5, color = "black") +
+    geom_line() + 
+    scale_x_log10() +
+    scale_color_gradientn(colors = rainbow(50)) +
+    labs(title = "SVM-Radial",
+         subtitle = "(sigma = 0.0203, C = 5.112)",
+         y = "Accuracy",
+         x = "Regularizaiton parameter")
+
+(mars.tune+nnet.tune)/(rpart.tune+ctree.tune)/(nb.tune+ svml.tune)
+
+(glmn.tune + svmr.tune)/(rf.tune+gbm.tune)
+```
+
+
+

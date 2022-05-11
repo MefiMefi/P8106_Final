@@ -147,6 +147,8 @@ Not surprisingly, the SVM models has the smallest error rate of 0.02174 i.e. acc
 
 # 4 Limitations
 
+Our dataset is imbalanced. The rare disease outcome may cause our model to underestimate the potential effect of some predictors. In the data preprocessing step, we assume data are missing-at-random but we never know whether this is the true scenario. Also, the models are trained and tested on normalized data for better classification results. However, it is hard to interpret the relationship between original values of covaraiate and the disease outcome based on the normalized data i.e. reduced interpretability. Last but not least, in terms of interpretability, support vector machine is limited comparing with regression and tree-based methods. They may be hard for physicians to tell their biological meaning.
+
 # 5 Conclusion
 
 # 6 Bibliography

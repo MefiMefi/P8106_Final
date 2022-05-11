@@ -83,9 +83,9 @@ hcv.test.df <- hcv[-rowTrain,]
 ```{r preprocess_with_impute}
 preprocess_recipe = recipe(Category ~ ., data = hcv.train.df) %>%
     step_knnimpute(all_predictors(), neighbors = 5) %>%  
-    step_BoxCox(all_numeric()) %>% 
-    step_center(all_numeric()) %>% 
-    step_scale(all_numeric())
+    step_BoxCox(all_numeric_predictors()) %>% 
+    step_center(all_numeric_predictors()) %>% 
+    step_scale(all_numeric_predictors())
 ```
 
 ```{r impute}

@@ -35,6 +35,11 @@ ctrl <- trainControl(method = "repeatedcv",
                      summaryFunction = twoClassSummary)
 ```
 
+```{r}
+
+```
+
+
 
 ```{r adaboost}
 library(parallel)
@@ -46,22 +51,22 @@ library(doParallel)
 cl <- makePSOCKcluster(num_cores)
 registerDoParallel(cl)
 
-gbmA.grid <- expand.grid(n.trees = c(3000,4000,5000,6000),
-                         interaction.depth = 1:6,
-                         shrinkage = c(0.001, 0.002, 0.005),
-                         n.minobsinnode = 1)
+gbm.grid <- expand.grid(n.trees = c(4000,5000,6000),
+                            interaction.depth = 1:6,
+                            shrinkage = c(0.001,0.002,0.004),
+                            n.minobsinnode = 1)
 set.seed(2022)
-model.gbmA <- train(Category ~ . , 
-                  hcv.train.df, 
-                  tuneGrid = gbmA.grid,
+model.gbm <- train(x = trainData.dummy,
+                   y = hcv.train.df$Category,
+                  tuneGrid = gbm.grid,
                   trControl = ctrl,
                   method = "gbm",
                   distribution = "adaboost",
-                  metric = "ROC",
+                  metric = "Accuracy",
                   verbose = FALSE)
 
-ggplot(model.gbmA, highlight = TRUE)
-model.gbmA$bestTune
+ggplot(model.gbm, highlight = TRUE)
+model.gbm$bestTune
 # Stop the parallel computing cluster
 stopCluster(cl)
 registerDoSEQ()
@@ -80,9 +85,14 @@ model.svml$bestTune
 ```
 
 ```{r compare}
-res <- resamples(list(AdaBoost = model.gbmA, SVML = model.svml))
-
-bwplot(res, metric = "ROC")
+set.seed(2022)
+model.ctree <- train(x = trainData.dummy,
+                   y = hcv.train.df$Category,
+                     method = "ctree",
+                     tuneGrid = data.frame(mincriterion = 1 - exp(seq(-2, -1, leng = 100))),
+                     metric = "Accuracy",
+                     trControl = ctrl,
+                     na.action = na.pass)
 ```
 
 ```{r save}

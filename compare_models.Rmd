@@ -52,6 +52,7 @@ model.nb <- readRDS("models/model.nb.rds")
 model.qda <- readRDS("models/model.qda.rds")
 model.rf <- readRDS("models/model.rf.rds")
 model.rpart <- readRDS("models/model.rpart.rds")
+model.nnet <- readRDS("models/model.nnet.rds")
 ```
 
 # Training cross-validated accuracy 
@@ -69,7 +70,8 @@ res <- resamples(list(GLMN = model.glmn,
                       RF = model.rf,
                       AdaBoost = model.gbm,
                       SVML = model.svml,
-                      SVMR = model.svmr))
+                      SVMR = model.svmr,
+                      NNET = model.nnet))
 
 bwplot(res, metrc = "Accuracy")
 ```
@@ -78,7 +80,7 @@ bwplot(res, metrc = "Accuracy")
 
 ```{r accuracy_graph}
 models <- list(model.glmn, model.glm, model.mars, model.gam, model.lda, model.nb, model.qda, model.ctree, model.rpart, model.rf, model.gbm, model.svml, model.svmr)
-model_names <- c("GLMNET", "GLM", "MARS", "GAM","LDA", "NB", "QDA", "CTREE", "RPART", "RF", "AdaBoost", "SVML", "SVMR")
+model_names <- c("GLMNET", "GLM", "MARS", "GAM","LDA", "NB", "QDA", "CTREE", "RPART", "RF", "AdaBoost", "SVML", "SVMR","NNET")
 
 error_rate <- function(model_list){
   x = 0
@@ -98,8 +100,4 @@ error_rate <- function(model_list){
 error_rate <- error_rate(models);error_rate
 ```
 
-
-```{r vip}
-
-```
 

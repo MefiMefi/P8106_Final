@@ -47,7 +47,7 @@ ctrl <- trainControl(method = "repeatedcv",
 model.nnet<- train(Category~.,
                    data = hcv.train.df,
                    method = "nnet",
-                   tuneGrid =  expand.grid(decay = exp(seq(-1, 2.5, len = 15)),
+                   tuneGrid =  expand.grid(decay = exp(seq(-3, 2, len = 20)),
                                            size = c(1:5)),
                    metric = "Accuracy",
                    trControl = ctrl)

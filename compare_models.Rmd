@@ -79,7 +79,7 @@ bwplot(res, metrc = "Accuracy")
 ## Training Accuracy
 
 ```{r accuracy_graph}
-models <- list(model.glmn, model.glm, model.mars, model.gam, model.lda, model.nb, model.qda, model.ctree, model.rpart, model.rf, model.gbm, model.svml, model.svmr)
+models <- list(model.glmn, model.glm, model.mars, model.gam, model.lda, model.nb, model.qda, model.ctree, model.rpart, model.rf, model.gbm, model.svml, model.svmr,model.nnet)
 model_names <- c("GLMNET", "GLM", "MARS", "GAM","LDA", "NB", "QDA", "CTREE", "RPART", "RF", "AdaBoost", "SVML", "SVMR","NNET")
 
 error_rate <- function(model_list){

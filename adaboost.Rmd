@@ -51,13 +51,13 @@ library(doParallel)
 cl <- makePSOCKcluster(num_cores)
 registerDoParallel(cl)
 
-gbm.grid <- expand.grid(n.trees = c(4000,5000,6000),
-                            interaction.depth = 1:6,
-                            shrinkage = c(0.001,0.002,0.004),
+gbm.grid <- expand.grid(n.trees = c(2000, 3000, 4000, 5000, 6000),
+                            interaction.depth = 1:8,
+                            shrinkage = c(0.03,0.05,0.07),
                             n.minobsinnode = 1)
 set.seed(2022)
-model.gbm <- train(x = trainData.dummy,
-                   y = hcv.train.df$Category,
+model.gbm <- train(Category~.,
+                   data = hcv.train.df,
                   tuneGrid = gbm.grid,
                   trControl = ctrl,
                   method = "gbm",

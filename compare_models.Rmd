@@ -4,7 +4,32 @@ output: html_document
 ---
 
 ```{r setup, include=FALSE}
+library(gridExtra)
+library(ggplot2)
+library(corrplot)
+library(ResourceSelection)
+library(ISLR)
+library(pROC)
+library(summarytools)
+library(glmnet)
 library(caret)
+library(plotmo)
+library(gtsummary)
+library(readr)
+
+library(MASS)
+library(mlbench)
+
+library(pdp)
+library(vip)
+library(AppliedPredictiveModeling)
+
+library(rpart)
+library(rpart.plot)
+library(party)
+library(partykit)
+
+library(tidyverse)
 # General figure set up
 knitr::opts_chunk$set(
   # hide warning messages
@@ -15,19 +40,87 @@ knitr::opts_chunk$set(
 ## Conclusion
 
 ```{r compare}
-model.svml <- readRDS("models/svml.rds")
-model.svmr <- readRDS("models/svmr.rds")
+model.svml <- readRDS("models/model.svml.rds")
+model.svmr <- readRDS("models/model.svmr.rds")
+model.ctree <- readRDS("models/model.ctree.rds")
+model.gam <- readRDS("models/model.gam.rds")
+model.gbm <- readRDS("models/model.gbm.rds")
+model.glm <- readRDS("models/model.glm.rds")
+model.glmn <- readRDS("models/model.glmn.rds")
+model.lda <- readRDS("models/model.lda.rds")
+model.mars <- readRDS("models/model.mars.rds")
+model.nb <- readRDS("models/model.nb.rds")
+model.qda <- readRDS("models/model.qda.rds")
+model.rf <- readRDS("models/model.rf.rds")
+model.rpart <- readRDS("models/model.rpart.rds")
+```
 
-model.ctree <- load.Rdata("models/model.ctree.RData")
-model.gam <- load("models/model.gam.RData")
-model.gbm <- load("models/model.gbm.RData")
-model.glm <- load("models/model.glm.RData")
-model.glmn <- load("models/model.glmn.RData")
-model.lda <- load("models/model.lda.RData")
-model.mars <- load("models/model.mars.RData")
-model.nb <- load("models/model.nb.RData")
-model.qda <- load("models/model.qda.RData")
-model.rf <- load("models/model.rf.RData")
-model.rpart <- load("models/model.rpart.RData")
+# Training cross-validated accuracy 
+```{r}
+res <- resamples(list(GLMN = model.glmn,
+                      GLM = model.glm,
+                      MARS = model.mars,
+                      LDA = model.lda,
+                      GAM = model.gam,
+                      NB = model.nb,
+                      QDA = model.qda,
+                      CTREE = model.ctree,
+                      RPART = model.rpart,
+                      RF = model.rf,
+                      AdaBoost = model.gbm,
+                      SVML = model.svml,
+                      SVMR = model.svmr))
+
+bwplot(res, metrc = "Accuracy")
+```
+
+## Training Accuracy
+
+```{r accuracy_graph}
+models <- list(model.glmn, model.glm, model.mars, model.gam, model.lda, model.nb, model.qda, model.ctree, model.rpart, model.rf, model.gbm, model.svml, model.svmr)
+model_names <- c("GLMNET", "GLM", "MARS", "GAM","LDA", "NB", "QDA", "CTREE", "RPART", "RF", "AdaBoost", "SVML", "SVMR")
+
+testData.dummy <- model.matrix(Category~., hcv.test.df)[,-1]
+
+error_rate <- function(model_list){
+  x = 0
+  error_rate <- c()
+  for (i in model_list){
+    x = x + 1
+    model.pred <- predict(i, newdata = testData.dummy)
+    confusion_matrix <- confusionMatrix(data = model.pred,
+                                        reference = hcv.test.df$Category,
+                                        positive = "patient")
+    error_rate.model <- 1 - confusion_matrix$overal[[1]]
+    error_rate <- c(error_rate, error_rate.model)
+  }
+  return(error_rate)
+}
+
+error_rate <- error_rate(models);error_rate
+```
+
+```{r}
+models <- list(model.glmn, model.glm, model.gam)
+model_names <- c("GLMNET", "GLM", "GAM")
+
+testData.dummy <- model.matrix(Category~., hcv.test.df)[,-1]
+
+error_rate <- function(model_list){
+  x = 0
+  error_rate <- c()
+  for (i in model_list){
+    x = x + 1
+    model.pred <- predict(i, newdata = testData.dummy)
+    confusion_matrix <- confusionMatrix(data = model.pred,
+                                        reference = hcv.test.df$Category,
+                                        positive = "patient")
+    error_rate.model <- 1 - confusion_matrix$overal[[1]]
+    error_rate <- c(error_rate, error_rate.model)
+  }
+  return(error_rate)
+}
+
+error_rate <- error_rate(models);error_rate
 ```
 

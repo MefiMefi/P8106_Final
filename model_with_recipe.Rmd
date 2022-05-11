@@ -1,16 +1,9 @@
 ---
-title: "Untitled"
-author: "Renjie Wei"
-date: '2022-03-19'
+title: "models_with_recipe"
 output: html_document
 ---
 
-```{r setup, include=FALSE}
-knitr::opts_chunk$set(echo = TRUE, warning = FALSE, message = FALSE)
-```
-
 ```{r packages}
-setwd(dirname(rstudioapi::getSourceEditorContext()$path))
 library(gridExtra)
 library(ggplot2)
 library(corrplot)
@@ -48,8 +41,16 @@ library(groupdata2)
 library(reshape)
 library(glmnet)
 library(MASS)
+
+# General figure set up
+knitr::opts_chunk$set(
+  # hide warning messages
+  warning = FALSE
+)
 ```
 
+
+## Preprocess
 
 ```{r load_data}
 theme_set(theme_bw())
@@ -77,11 +78,6 @@ options(na.action='na.pass')
 
 hcv.train.df <- hcv[rowTrain,]
 hcv.test.df <- hcv[-rowTrain,]
-
-hcv.train.x <- model.matrix(~.-1,hcv[rowTrain,])
-hcv.train.y <- hcv$Category[rowTrain]
-hcv.test.x <- model.matrix(~.-1,hcv[-rowTrain,])
-hcv.test.y <- hcv$Category[-rowTrain]
 ```
 
 
@@ -93,12 +89,30 @@ preprocess_recipe = recipe(Category ~ ., data = hcv.train.df) %>%
     step_scale(all_numeric_predictors())
 ```
 
+```{r impute}
+set.seed(2022)
+
+prep <- prep(preprocess_recipe, training = hcv.train.df)
+
+# !! apply the preprocessing operations 
+hcv.train.df <- bake(prep, new_data = hcv.train.df)
+hcv.test.df <- bake(prep, new_data = hcv.test.df)
+
+hcv.train.x <- model.matrix(~.-1,hcv[rowTrain,])
+hcv.train.y <- hcv$Category[rowTrain]
+hcv.test.x <- model.matrix(~.-1,hcv[-rowTrain,])
+hcv.test.y <- hcv$Category[-rowTrain]
+```
+
+## Training models
+
 ```{r glm, cache=TRUE}
 ctrl <- trainControl(method = "repeatedcv",
                     repeats = 5,
                     #summaryFunction = twoClassSummary,
-                    classProbs = TRUE,
-                    preProcOptions = list(k = 5))
+                    classProbs = TRUE)
+# Convert Sex to dummy variable
+trainData.dummy <- model.matrix(Category~., hcv.train.df)[,-1]
 
 set.seed(2022)
 # glm
@@ -107,8 +121,7 @@ model.glm <- train(Category~.,
                    method = "glm",
                    metric = "Accuracy",
                    trControl = ctrl,
-                   na.action = na.pass,
-                   preProcess = c("knnImpute", "center", "scale", "BoxCox"))
+                   na.action = na.pass)
 # penalized glm
 
 library(parallel) 
@@ -121,21 +134,14 @@ no_cores <- detectCores() - 1
 cl <- makePSOCKcluster(no_cores)
 registerDoParallel(cl)
 
-ctrl.glmn <- trainControl(method = "repeatedcv",
-                    repeats = 5,
-                    classProbs = TRUE,
-                    preProcOptions = list(k = 5))
-
-
 glmnGrid <- expand.grid(alpha = seq(0, 1, length = 21), lambda = exp(seq(2,-6, length = 50)))
 model.glmn <- train(Category~.,
                    data = hcv.train.df,
                    method = "glmnet",
                    tuneGrid = glmnGrid,
                    metric = "Accuracy",
-                   trControl = ctrl.glmn,
-                   na.action = na.pass,
-                   preProcess = c("knnImpute", "center", "scale", "BoxCox"))
+                   trControl = ctrl,
+                   na.action = na.pass)
 
 stopCluster(cl)
 registerDoSEQ()
@@ -161,8 +167,7 @@ model.gam <- train(Category~.,
                    method = "gam",
                    metric = "Accuracy",
                    trControl = ctrl,
-                   na.action = na.pass,
-                   preProcess = c("knnImpute", "center", "scale", "BoxCox"))
+                   na.action = na.pass)
 stopCluster(cl)
 registerDoSEQ()
 model.gam$finalModel
@@ -174,20 +179,18 @@ set.seed(2022)
 cl <- makePSOCKcluster(no_cores)
 registerDoParallel(cl)
 model.mars <- train(Category~.,
-                   data = hcv.train.df,
-                   method = "earth",
-                   tuneGrid = expand.grid(degree = 1:4, nprune = 2:23),
-                   metric = "Accuracy",
-                   trControl = ctrl,
-                   na.action = na.pass,
-                   preProcess = c("knnImpute", "center", "scale", "BoxCox"))
+                    data = hcv.train.df,
+                    method = "earth",
+                    tuneGrid = expand.grid(degree = 1:4, nprune = 2:23),
+                    metric = "Accuracy",
+                    trControl = ctrl,
+                    na.action = na.pass)
 stopCluster(cl)
 registerDoSEQ()
 
-tuning1 <- ggplot(model.mars, highlight  = TRUE)
+ggplot(model.mars, highlight  = TRUE)
 model.mars$finalModel
 model.mars$bestTune
-tuning1
 ```
 
 ```{r lda}
@@ -198,8 +201,7 @@ model.lda <- train(Category~.,
                    method = "lda",
                    metric = "Accuracy",
                    trControl = ctrl,
-                   na.action = na.pass,
-                   preProcess = c("knnImpute", "center", "scale", "BoxCox"))
+                   na.action = na.pass)
 stopCluster(cl)
 registerDoSEQ()
 
@@ -210,8 +212,7 @@ model.qda <- train(Category~.,
                    method = "qda",
                    metric = "Accuracy",
                    trControl = ctrl,
-                   na.action = na.pass,
-                   preProcess = c("knnImpute", "center", "scale", "BoxCox"))
+                   na.action = na.pass)
 stopCluster(cl)
 registerDoSEQ()
 
@@ -227,8 +228,7 @@ model.nb <- train(Category~.,
                   ),
                   metric = "Accuracy",
                   trControl = ctrl,
-                  na.action = na.pass,
-                  preProcess = c("knnImpute", "center", "scale", "BoxCox"))
+                  na.action = na.pass)
 stopCluster(cl)
 registerDoSEQ()
 plot(model.nb)
@@ -245,8 +245,7 @@ model.rpart <- train(Category~.,
                      tuneGrid = data.frame(cp = exp(seq(-8, -3, leng = 100))),
                      metric = "Accuracy",
                      trControl = ctrl,
-                     na.action = na.pass,
-                     preProcess = c("knnImpute", "center", "scale", "BoxCox"))
+                     na.action = na.pass)
 stopCluster(cl)
 registerDoSEQ()
 
@@ -257,15 +256,14 @@ model.rpart$bestTune
 
 cl <- makePSOCKcluster(no_cores)
 registerDoParallel(cl)
-
+set.seed(2022)
 model.ctree <- train(Category~.,
                      data = hcv.train.df,
                      method = "ctree",
                      tuneGrid = data.frame(mincriterion = 1 - exp(seq(-2, -1, leng = 100))),
                      metric = "Accuracy",
                      trControl = ctrl,
-                     na.action = na.pass,
-                     preProcess = c("knnImpute", "center", "scale", "BoxCox"))
+                     na.action = na.pass)
 stopCluster(cl)
 registerDoSEQ()
 
@@ -273,6 +271,7 @@ ggplot(model.ctree, highlight = TRUE)
 plot(model.ctree$finalModel)
 model.ctree$bestTune
 ```
+
 ```{r random_forest, cache=TRUE}
 set.seed(2022)
 
@@ -289,8 +288,7 @@ model.rf <- train(Category~.,
                   tuneGrid = rf.grid,
                   metric = "Accuracy",
                   trControl = ctrl,
-                  na.action = na.pass,
-                  preProcess = c("knnImpute", "center", "scale", "BoxCox"))
+                  na.action = na.pass)
 stopCluster(cl)
 registerDoSEQ()
 tuning2 <- ggplot(model.rf, highlight = TRUE)
@@ -314,90 +312,70 @@ model.gbm = train(Category~.,
                   method = "gbm",
                   distribution = "adaboost",
                   metric = "Accuracy",
-                  verbose = FALSE,
-                  preProcess = c("knnImpute", "center", "scale", "BoxCox"))
+                  verbose = FALSE)
+stopCluster(cl)
+registerDoSEQ()
 ggplot(model.gbm,highlight = T)
+
 ```
+
+```{r svml}
+set.seed(2022)
+cl <- makePSOCKcluster(no_cores)
+registerDoParallel(cl)
+model.svml = train(Category~.,
+                   data = hcv.train.df,
+                   method = "svmLinear",
+                   metric = "Accuracy",
+                   tuneGrid = data.frame(C = exp(seq(-2,2,len = 200))),
+                   trControl = ctrl)
+stopCluster(cl)
+registerDoSEQ()
+plot(model.svml, highlight = TRUE, xTrans = log)
+model.svml$bestTune
+```
+
+```{r svmr}
+svmr.grid = expand.grid(C = exp(seq(-1,4,len = 20)),
+                        sigma = exp(seq(-6,-2,len=20)))
+
+set.seed(2022)
+cl <- makePSOCKcluster(no_cores)
+registerDoParallel(cl)
+model.svmr = train(Category~.,
+                   data = hcv.train.df,
+                 method = "svmRadialSigma",
+                 tuneGrid = svmr.grid,
+                 metric = "Accuracy",
+                 trControl = ctrl)
+
+myCol = rainbow(20)
+myPar = list(superpose.symbol = list(col = myCol),
+             superpose.line = list(col = myCol))
+stopCluster(cl)
+registerDoSEQ()
+plot(model.svmr, hightlight = TRUE, par.settings = myPar)
+
+model.svmr$bestTune
+```
+
 
 ```{r nn}
 
 ```
 
 ```{r save_models}
-save(model.glm, file = "./models/model.glm.RData")
-save(model.glmn, file = "./models/model.glmn.RData")
-save(model.gam, file = "./models/model.gam.RData")
-save(model.mars, file = "./models/model.mars.RData")
-save(model.lda, file = "./models/model.lda.RData")
-save(model.qda, file = "./models/model.qda.RData")
-save(model.nb, file = "./models/model.nb.RData")
-save(model.ctree, file = "./models/model.ctree.RData")
-save(model.rf, file = "./models/model.rf.RData")
-save(model.rpart,file = "./models/model.rpart.RData")
-save(model.gbm, file = "./models/model.gbm.RData")
+saveRDS(model.glm, file = "./models/model.glm.rds")
+saveRDS(model.glmn, file = "./models/model.glmn.rds")
+saveRDS(model.gam, file = "./models/model.gam.rds")
+saveRDS(model.mars, file = "./models/model.mars.rds")
+saveRDS(model.lda, file = "./models/model.lda.rds")
+saveRDS(model.qda, file = "./models/model.qda.rds")
+saveRDS(model.nb, file = "./models/model.nb.rds")
+saveRDS(model.ctree, file = "./models/model.ctree.rds")
+saveRDS(model.rf, file = "./models/model.rf.rds")
+saveRDS(model.rpart,file = "./models/model.rpart.rds")
+saveRDS(model.gbm, file = "./models/model.gbm.rds")
+saveRDS(model.svml, "./models/model.svml.rds")
+saveRDS(model.svmr, "./models/model.svmr.rds")
 ```
-
-
-```{r resample, cache=TRUE}
-res <- resamples(list(GLM = model.glm, GLMNET = model.glmn, GAM = model.gam, MARS = model.mars, CTREE = model.ctree, RPART = model.rpart, LDA = model.lda, QDA = model.qda, NB = model.nb, RF = model.rf))
-trainROC <- bwplot(res, metric = "ROC")
-summary(res)
-```
-
-
-```{r prediction, cache=TRUE}
-glm.pred <- predict(model.glm, newdata = hcv.test.x.bag, type = "prob")[,2]
-glmn.pred <- predict(model.glmn, newdata = hcv.test.x.bag, type = "prob")[,2]
-gam.pred <- predict(model.gam, newdata = hcv.test.x.bag, type = "prob")[,2]
-mars.pred <- predict(model.mars, newdata = hcv.test.x.bag, type = "prob")[,2]
-ctree.pred <- predict(model.ctree, newdata = hcv.test.x.bag, type = "prob")[,2]
-rpart.pred <- predict(model.rpart, newdata = hcv.test.x.bag, type = "prob")[,2]
-lda.pred <- predict(model.lda, newdata = hcv.test.x.bag, type = "prob")[,2]
-qda.pred <- predict(model.qda, newdata = hcv.test.x.bag, type = "prob")[,2]
-nb.pred <- predict(model.nb, newdata = hcv.test.x.bag, type = "prob")[,2]
-rf.pred <- predict(model.rf, newdata = hcv.test.x.bag, type = "prob")[,2]
-
-glm.roc <- roc(hcv.test.y, glm.pred)
-glmn.roc <- roc(hcv.test.y, glmn.pred)
-gam.roc <- roc(hcv.test.y, gam.pred)
-mars.roc <- roc(hcv.test.y, mars.pred)
-ctree.roc <- roc(hcv.test.y, ctree.pred)
-rpart.roc <- roc(hcv.test.y, rpart.pred)
-lda.roc <- roc(hcv.test.y, lda.pred)
-qda.roc <- roc(hcv.test.y, qda.pred)
-nb.roc <- roc(hcv.test.y, nb.pred)
-rf.roc <- roc(hcv.test.y, rf.pred)
-
-auc <- c(
-    glm.roc$auc[1],
-    glmn.roc$auc[1],
-    gam.roc$auc[1],
-    mars.roc$auc[1],
-    ctree.roc$auc[1],
-    rpart.roc$auc[1],
-    lda.roc$auc[1],
-    qda.roc$auc[1],
-    nb.roc$auc[1],
-    rf.roc$auc[1]
-)
-
-modelNames <- c(
-    "glm",
-    "glmn",
-    "gam",
-    "mars",
-    "ctree",
-    "rpart",
-    "lda",
-    "qda",
-    "nb",
-    "rf"
-)
-
-roc.plot <- ggroc(list(glm.roc, glmn.roc, gam.roc, mars.roc, ctree.roc, rpart.roc, lda.roc, qda.roc, nb.roc, rf.roc), legacy.axes = TRUE) + 
-    scale_color_discrete(labels = paste0(modelNames, "(", round(auc,4),")"), name = "Models AUC on Test set") + geom_abline(intercept = 0, slope = 1)
-roc.plot
-ggsave(filename = "./plots/testROC.png",plot = roc.plot, device = "png", width = 8, height = 6)
-```
-
-

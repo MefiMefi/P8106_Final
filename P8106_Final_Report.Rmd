@@ -89,12 +89,36 @@ Specifically, here shows the predictors in the models:
 
 ## 3.2 Used Techniques
 
-models ...
+Since the traditional approach in HCV diagnostic pathways is related to decision tree, two tree methods were used: the conditional inference trees (CTREE) and regression tree (RPART). The tree methods can be displayed graphically and more easily understood by physicians. Taking the diagnosis of HCV as a classification problem, other machine learning models were also trained for the purpose our project. We used the generalized additive model model (GAM), the generalized linear regression models, GLMNET (with penalization) and GLM (without penalization), linear and quadratic discriminant analysis models (LDA, QDA), as well as naive bayes (NB). We also added black-box models, including ensemble models random forest (RF) and adaboost model, support vector machine (SVM) models with linear and radial kernel, as well as the neural network (NN) model. 
+All the models were trained using the package `caret`. The regression models (GLM, LDA, etc. al.) can accept mixture of variables which is suitable for our case. NB is useful when predictor number is large. GAM model can include any quadratically penalized GLM and a variety of other models, which induces great flexibility. Linear regression model also assumed the independence of the predictors. The black-box models are more complicated and are expected to have better performance.
 
-Since the traditional approach in HCV diagnostic pathways is related to decision tree, two tree methods were used: the conditional inference trees (CTREE) and regression tree (RPART). The tree methods can be displayed graphically and more easily understood by physicians. Taking the diagnosis of HCV as a classification problem, other machine learning models were also trained for the purpose our project. We used the generalized additive model model (GAM), the generalized linear regression models, GLMNET (with penalization) and GLM (without penalization), linear and quadratic discriminant analysis models (LDA, QDA), as well as naive bayes (NB). **TODO  We also implemented.......** 
-All the models were trained using the package $caret$. The regression models (GLM, LDA, etc. al.) can accept mixture of variables which is suitable for our case. NB is useful when predictor number is large. GAM model can include any quadratically penalized GLM and a variety of other models, which induces great flexibility. Linear regression model also assumed the independence of the predictors. 
+## 3.3 Parameters Tuning
 
-## 3.3 Tuning parameters
+The tuning parameters are tested via the train function of the `caret` package. We looked for the point where the best cross-validated training accuracy is obtained.
+
+### GLMNET Model
+
+We tested on different ranges of regularization parameter $\lambda$ and $\alpha$. The result is alpha = 0.75, and lambda = 0.0015.
+
+### MARS Model
+
+MARS model can take a wide degree of features and number of terms. For simplicity, we only consider the performance of MARS in the first four degrees and all terms. The best tuned parameter is degree = 2 and nprune = 7.
+
+### NB and Tree models
+
+NB is trained by the Laplace correction parameter and the kernel density estimates. The CTREE is trained by minicriterion and RPART is trained by the complexity parameter (cp). The results are: Laplace correction(FL) = 1, adjust = 1.7 for NB model, minicriterion = 0.86 for CTREE model, and cp = 0.050 for the RPART model. 
+
+### RF and Adaboost Model
+
+RF and Adaboost are black-box ensemble methods. RF is trained by number of trees and minimum node size. The best tuned number of trees is 3, and minimum node size of 1 with gini split rule. Adaboost is trained via number of trees, tree depth and learning rate. The best tuned parameter is number of trees equals 3000, with tree depth of 7 and learning rate 0.05. 
+
+### SVM models with linear and radial kernel
+
+Linear kernel SVM model is tuned with the penalty associated with having an observation on the wrong side of the classification boundary. The best tuned cost is 0.30. Radial kernel SVM is tuned with an additional sigma parameter for kernel function, and the best tuned value is 0.020.
+
+### Neural Network Model
+
+The best tuned neural network model has 5 hidden units and decay rate of 0.14.
 
 ```{r tuning}
 ```

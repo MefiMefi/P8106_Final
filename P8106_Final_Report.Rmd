@@ -1,0 +1,108 @@
+---
+title: "Predicting Hepatitis C Virus Patient Using Multiple Classification Methods"
+subtitle: 'P8106 Data Science 2 Final'
+author: | 
+    Jibei Zheng, Renjie Wei, Shihui Zhu
+date: '2022-05-09'
+geometry: "left=1.3cm,right=1.3cm,top=1.3cm,bottom=1.3cm"
+output:
+  pdf_document:
+    latex_engine: xelatex
+    toc: yes
+    toc_depth: 3
+  html_document:
+    df_print: paged
+    toc: yes
+    toc_depth: '3'
+header-includes:
+- \usepackage{fancyhdr}
+- \usepackage{lipsum}
+- \pagestyle{fancy}
+- \fancyhead[R]{\thepage}
+- \fancypagestyle{plain}{\pagestyle{fancy}}
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, warning = F, message = F)
+```
+
+# 1 Introduction
+
+## 1.1 Data Source
+
+The original purpose of the research where the data set was built was to replace liver biopsy for disease staging. In the study, multiple serum markers in this dataset are under evaluation with multi-parametric panels yielding the most promising results\(^{1,2}\).
+
+## 1.2 Motivation
+
+According to the Centers for Disease Control and Prevention (CDC): Hepatitis C is a liver infection caused by the hepatitis C virus (HCV). Hepatitis C is spread through contact with blood from an infected person. Today, most people become infected with the hepatitis C virus by sharing needles or other equipment used to prepare and inject drugs. For some people, hepatitis C is a short-term illness, but for more than half of people who become infected with the hepatitis C virus, it becomes a long-term, chronic infection. Chronic hepatitis C can result in serious, even life-threatening health problems like cirrhosis and liver cancer. People with chronic hepatitis C can often have no symptoms and don’t feel sick. When symptoms appear, they often are a sign of advanced liver disease. There is no vaccine for hepatitis C. The best way to prevent hepatitis C is by avoiding behaviors that can spread the disease, especially injecting drugs. Getting tested for hepatitis C is important, because treatments can cure most people with hepatitis C in 8 to 12 weeks\(^{3}\).
+
+Creating a predictive model that could perform early detection of Hepatitis C and other liver diseases would allow people to quickly and easily determine their risk/get treatment.
+
+## 1.3 Data Preparation and Cleaning
+
+The data contains 615 observations and 13 attributes of blood donors and Hepatitis C patients laboratory (10 laboratory results) and demographic values (age and gender), as well as a subject Category indicator. All attributes except the outcome indicator Category (blood donors vs. Hepatitis C, including its progress-Hepatitis C, Fibrosis, Cirrhosis) and Sex are numerical. Package `tydiverse` were used to clean data and transform data types for analysis convenience, package `caret` were used to partitioning data to training and testing set, 70% of the data to be train data and the 30% rest to be test data. I investigated for abnormal values in laboratory values, as well as the missing data. The are total 31 observations missing values in ALB, ALP, ALT, CHOL and PROT, which were assumed to be missing-at-random (MAR). Since there are only 615 observations so I implement bagging imputation method to impute the missing value using the training set, then apply it to the test set. Continuous variables were not transformed since most of them are approximately normal. The descriptive analysis is shown in Table 1.
+
+```{r, echo=FALSE}
+library(gtsummary)
+library(tidyverse)
+hcv <- read.csv("HepatitisCdata.csv")[,-1]
+hcv %>%
+  tbl_summary(by = Category, missing_text = "Missing/NA") %>%
+  add_p(pvalue_fun = ~style_pvalue(.x, digits = 2)) %>%
+  add_overall() %>%
+  add_n() %>%
+  modify_header(label ~ "**Variable**") %>%
+  modify_spanning_header(c("stat_1", "stat_2") ~ "**Subject Type**") %>%
+  modify_footnote(
+    all_stat_cols() ~ "Median (IQR) or Frequency (%)"
+  ) %>%
+  modify_caption("**Summary of Dataset**")
+```
+
+# 2 Exploratory analysis/visualization
+
+## TODO
+
+# 3 Modeling
+
+## 3.1 Predictors
+
+In the modeling part, all variables were included and there wasn't variable selection procedure prior to modeling process. The target response variable is Category, which was recoded as 0 and 1, representing healthy blood donors and kinds of liver diseases patients.
+
+Specifically, here shows the predictors in the models:
+(1) Age: age of the patient in years;
+(2) Sex: sex of the patient;
+(3) ALB: amount of albumin in patient's blood;
+(4) ALP: amount of alkaline phosphatase in patient's blood;
+(5) ALT: amount of alanine transaminase in patient's blood;
+(6) AST: amount of aspartate aminotransferase in patient's blood;
+(7) BIL: amount of bilirubin in patient's blood;
+(8) CHE: amount of cholinesterase in patient's blood;
+(9) CHOL: amount of cholesterol in patient's blood;
+(10) CREA: amount of creatine in patient's blood;
+(11) GGT: amount of gamma-glutamyl transferase in patient's blood;
+(12) PROT: amount of protein in patient's blood;
+
+## 3.2 Used Techniques
+
+## 3.3 Tuning parameters
+
+## 3.4 Training Performance
+
+## 3.5 Test performance
+
+## 3.6 Variable Importance
+
+# 4 Limitations
+
+# 5 Conclusion
+
+# 6 Bibliography
+
+1. Hoffmann, G., Bietenbeck, A., Lichtinghagen, R., & Klawonn, F. (2018). Using machine learning techniques to generate laboratory diagnostic pathways—a case study. Journal Of Laboratory And Precision Medicine, 3(6).
+
+2. Lichtinghagen, R., Pietsch, D., Bantel, H., Manns, M. P., Brand, K., & Bahr, M. J. (2013). The Enhanced Liver Fibrosis (ELF) score: normal values, influence factors and proposed cut-off values. Journal of hepatology, 59(2), 236–242. https://doi.org/10.1016/j.jhep.2013.03.016
+
+3. https://www.cdc.gov/hepatitis/hcv/index.htm
+
+# 7 Appendix

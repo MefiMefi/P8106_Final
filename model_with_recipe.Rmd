@@ -4,20 +4,12 @@ output: html_document
 ---
 
 ```{r packages}
-library(gridExtra)
 library(ggplot2)
-library(corrplot)
-library(ResourceSelection)
-library(ISLR)
-library(pROC)
-library(tidyverse)
-library(summarytools)
 library(glmnet)
 library(caret)
 library(plotmo)
 library(readr)
 library(mlbench)
-library(gtsummary)
 library(rpart)
 library(rpart.plot)
 library(party)
@@ -42,6 +34,7 @@ library(reshape)
 library(glmnet)
 library(MASS)
 
+library(tidyverse)
 # General figure set up
 knitr::opts_chunk$set(
   # hide warning messages

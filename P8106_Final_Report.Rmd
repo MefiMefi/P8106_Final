@@ -74,18 +74,18 @@ The data is already prepared in .csv table format. However, the dataset has 31 m
 In the modeling part, all variables were included and there wasn't variable selection procedure prior to modeling process. The target response variable is Category, which was recoded as 0 and 1, representing healthy blood donors and kinds of liver diseases patients.
 
 Specifically, here shows the predictors in the models:
-(1) Age: age of the patient in years;
-(2) Sex: sex of the patient;
-(3) ALB: amount of albumin in patient's blood;
-(4) ALP: amount of alkaline phosphatase in patient's blood;
-(5) ALT: amount of alanine transaminase in patient's blood;
-(6) AST: amount of aspartate aminotransferase in patient's blood;
-(7) BIL: amount of bilirubin in patient's blood;
-(8) CHE: amount of cholinesterase in patient's blood;
-(9) CHOL: amount of cholesterol in patient's blood;
-(10) CREA: amount of creatine in patient's blood;
-(11) GGT: amount of gamma-glutamyl transferase in patient's blood;
-(12) PROT: amount of protein in patient's blood;
+(1) `Age`: age of the patient in years;
+(2) `Sex`: sex of the patient;
+(3) `ALB`: amount of albumin in patient's blood;
+(4) `ALP`: amount of alkaline phosphatase in patient's blood;
+(5) `ALT`: amount of alanine transaminase in patient's blood;
+(6) `AST`: amount of aspartate aminotransferase in patient's blood;
+(7) `BIL`: amount of bilirubin in patient's blood;
+(8) `CHE`: amount of cholinesterase in patient's blood;
+(9) `CHOL`: amount of cholesterol in patient's blood;
+(10) `CREA`: amount of creatine in patient's blood;
+(11) `GGT`: amount of gamma-glutamyl transferase in patient's blood;
+(12) `PROT`: amount of protein in patient's blood;
 
 ## 3.2 Used Techniques
 

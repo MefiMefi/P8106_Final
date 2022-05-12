@@ -113,8 +113,8 @@ model.ctree$bestTune
 set.seed(2022)
 cl <- makePSOCKcluster(no_cores)
 registerDoParallel(cl)
-adaboost.grid = expand.grid(n.trees = c(6000,7000,8000,9000),
-                            interaction.depth = 1:6,
+adaboost.grid = expand.grid(n.trees = c(3000,4000,5000,6000,7000,8000,9000),
+                            interaction.depth = 1:8,
                             shrinkage = c(
                                 0.001,
                                 0.002,
@@ -145,7 +145,7 @@ ggplot(model.gbm,highlight = T)
 
 ```{r}
 saveRDS(model.ctree, file = "./models/model.ctree.rds")
-saveRDS(model.rf, file = "./models/model.rf.rds")
+#saveRDS(model.rf, file = "./models/model.rf.rds")
 saveRDS(model.rpart,file = "./models/model.rpart.rds")
 ```
 

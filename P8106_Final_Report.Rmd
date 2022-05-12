@@ -96,31 +96,24 @@ All the models were trained using the package `caret`. The regression models (GL
 
 The tuning parameters are tested via the train function of the `caret` package. We looked for the point where the best cross-validated training accuracy is obtained.
 
-### GLMNET Model
+* *GLMNET Model*: We tested on different ranges of regularization parameter $\lambda$ and $\alpha$. The result is `alpha = 0.75`, and `lambda = 0.0015`.
 
-We tested on different ranges of regularization parameter $\lambda$ and $\alpha$. The result is alpha = 0.75, and lambda = 0.0015.
+* *MARS Model*: MARS model can take a wide degree of features and number of terms. For simplicity, we only consider the performance of MARS in the first four degrees and all terms. The best tuned parameter is `degree = 2` and `nprune = 7`.
 
-### MARS Model
+* *NB and Tree models*: NB is trained by the Laplace correction parameter and the kernel density estimates. The CTREE is trained by minicriterion and RPART is trained by the complexity parameter (cp). The results are: `Laplace correction(FL) = 1`, `adjust = 1.7` for NB model, `minicriterion = 0.86` for CTREE model, and `cp = 0.050` for the RPART model. 
 
-MARS model can take a wide degree of features and number of terms. For simplicity, we only consider the performance of MARS in the first four degrees and all terms. The best tuned parameter is degree = 2 and nprune = 7.
+* *RF and Adaboost Model*: RF and Adaboost are black-box ensemble methods. RF is trained by number of trees and minimum node size. The best tuned number of trees is 3, and minimum node size of 1 with gini split rule. Adaboost is trained via number of trees, tree depth and learning rate. The best tuned parameter is number of trees equals 3000, with tree depth of 7 and learning rate 0.05. 
 
-### NB and Tree models
+* *SVM models with linear and radial kernel*: Linear kernel SVM model is tuned with the penalty associated with having an observation on the wrong side of the classification boundary. The best tuned cost is 0.30. Radial kernel SVM is tuned with an additional sigma parameter for kernel function, and the best tuned value is 0.020.
 
-NB is trained by the Laplace correction parameter and the kernel density estimates. The CTREE is trained by minicriterion and RPART is trained by the complexity parameter (cp). The results are: Laplace correction(FL) = 1, adjust = 1.7 for NB model, minicriterion = 0.86 for CTREE model, and cp = 0.050 for the RPART model. 
+* *Neural Network Model*: The best tuned neural network model has 5 hidden units and decay rate of 0.14.
 
-### RF and Adaboost Model
+```{r tuning_plot1, echo=FALSE, out.width = '90%', fig.align='center'}
+knitr::include_graphics("./tuningPlots/tuning_plot_1.jpg")
+```
 
-RF and Adaboost are black-box ensemble methods. RF is trained by number of trees and minimum node size. The best tuned number of trees is 3, and minimum node size of 1 with gini split rule. Adaboost is trained via number of trees, tree depth and learning rate. The best tuned parameter is number of trees equals 3000, with tree depth of 7 and learning rate 0.05. 
-
-### SVM models with linear and radial kernel
-
-Linear kernel SVM model is tuned with the penalty associated with having an observation on the wrong side of the classification boundary. The best tuned cost is 0.30. Radial kernel SVM is tuned with an additional sigma parameter for kernel function, and the best tuned value is 0.020.
-
-### Neural Network Model
-
-The best tuned neural network model has 5 hidden units and decay rate of 0.14.
-
-```{r tuning}
+```{r tuning_plot2, echo=FALSE, out.width = '90%', fig.align='center'}
+knitr::include_graphics("./tuningPlots/tuning_plot_2.jpg")
 ```
 
 ## 3.4 Training Performance

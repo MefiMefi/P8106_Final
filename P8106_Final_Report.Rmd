@@ -224,4 +224,40 @@ Therefore we select the SVM model with a radial kernel to be our final model wit
 
 # 7 Appendix
 
+For the code of this report and more details, please visit our repository [Github Repo](https://github.com/MefiMefi/P8160_Project3_MCMC).
+
+```{r append1, echo=FALSE, out.width = '80%', fig.align='center'}
+knitr::include_graphics("./plots/all_vip.jpg")
+```
+\begin{center}
+Figure 7. Variance Importance Plots for Different Models
+\end{center}
+
+```{r append2, echo=FALSE, out.width = '80%', fig.align='center'}
+knitr::include_graphics("./plots/rpart.jpg")
+```
+\begin{center}
+Figure 8. Final Tree from CART
+\end{center}
+
+```{r append3, echo=FALSE, out.width = '80%', fig.align='center'}
+knitr::include_graphics("./plots/cit.jpg")
+```
+\begin{center}
+Figure 9. Final Tree from CIT
+\end{center}
+
+```{r append4, echo=FALSE, out.width = '80%', fig.align='center'}
+knitr::include_graphics("./plots/nnet_plot.jpg")
+```
+\begin{center}
+Figure 10. Plot of the Network from Nerual Network Model
+\end{center}
+
+```{r append5, echo=FALSE, out.width = '80%', fig.align='center'}
+knitr::include_graphics("./plots/trace_glmnet.jpg")
+```
+\begin{center}
+Figure 11. Trace Plots of GLMNET Coefficients
+\end{center}
 

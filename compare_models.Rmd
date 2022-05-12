@@ -107,3 +107,33 @@ saveRDS(table_out, "error_rate.rds")
 table_out %>% knitr::kable(col.names = c("Models", "Testing Error Rate"), digits = 5)
 ```
 
+```{r}
+plotnet(model.nnet$finalModel, circle_col = "lightgray")
+
+par(mfrow=c(1,2))
+plot(as.party(model.rpart$finalModel))
+plot(model.ctree$finalModel)
+dev.off()
+```
+
+```{r}
+vip.df = as.data.frame(varImp(model.glmn)$importance) %>% dplyr::mutate(model = "glmnet", variable = rownames(vip.df))
+row.names(vip.df) = NULL
+
+for (m in list(model.mars, model.gam, model.rf, model.rpart, model.nnet)){
+    viptemp = as.data.frame(varImp(m)$importance) %>% dplyr::mutate(model = m$method)
+    viptemp$variable = row.names(viptemp)
+    row.names(viptemp) = NULL
+    vip.df = rbind(vip.df, viptemp)
+}
+
+vip.df %>% ggplot(aes(x = Overall, y = reorder(variable, Overall), fill = Overall))+
+    geom_bar(stat="identity", position="dodge", fill = "lightgray") + 
+    facet_wrap(~model) + ylab("Variable") + xlab("Importance")
+```
+
+```{r}
+dev.off()
+plot_glmnet(model.glmn$finalModel)
+```
+

@@ -42,9 +42,10 @@ Creating a predictive model that could perform early detection of Hepatitis C an
 
 The data contains 615 observations and 13 attributes of blood donors and Hepatitis C patients laboratory (10 laboratory results) and demographic values (age and gender), as well as a subject Category indicator. All attributes except the outcome indicator Category (blood donors vs. Hepatitis C, including its progress-Hepatitis C, Fibrosis, Cirrhosis) and Sex are numerical. Package `tydiverse` were used to clean data and transform data types for analysis convenience, package `caret` were used to partitioning data to training and testing set, 70% of the data to be train data and the 30% rest to be test data. We investigated for abnormal values in laboratory values, as well as the missing data. The descriptive analysis is shown in Table 1.
 
-```{r, echo=FALSE}
+```{r, echo=FALSE,}
 library(gtsummary)
 library(tidyverse)
+#library(kableExtra)
 hcv <- read.csv("HepatitisCdata.csv")[,-1]
 hcv %>%
   tbl_summary(by = Category, missing_text = "Missing/NA") %>%
@@ -55,8 +56,7 @@ hcv %>%
   modify_spanning_header(c("stat_1", "stat_2") ~ "**Subject Type**") %>%
   modify_footnote(
     all_stat_cols() ~ "Median (IQR) or Frequency (%)"
-  ) %>%
-  modify_caption("**Summary of Dataset**")
+  )
 ```
 
 # 2 Exploratory analysis/visualization
@@ -77,14 +77,8 @@ Figure 1. Distributions of Features in Two Categories
 
 We found that there are 31 missing values in the dataset, we assumed that the missing to be missing-at-random (MAR), and we will implement impute method with Box-Cox transformation before we train the models.
 
-We also investigated the multicollinearities. From **Figure 2**, we found that the highest correlation is between AST and Category: Patient (with a correlation of 0.63), followed by the correlation between ALB and PROT (0.57). The correlation between AST and the response variable is intriguing, which indicates that the level of serum AST might have a close relation to liver diseases.
+We also investigated the multicollinearities. From **Figure 6** (see *Appendix*), we found that the highest correlation is between AST and Category: Patient (with a correlation of 0.63), followed by the correlation between ALB and PROT (0.57). The correlation between AST and the response variable is intriguing, which indicates that the level of serum AST might have a close relation to liver diseases.
 
-```{r EDA_2, echo=FALSE, out.width = '90%', fig.align='center'}
-knitr::include_graphics("./plots/missing_corr.jpg")
-```
-\begin{center}
-Figure 2. Missing Data Plot and Correlation Plot
-\end{center}
 
 # 3 Modeling
 
@@ -115,9 +109,11 @@ Specifically, here shows the predictors in the models:
 Since the traditional approach in HCV diagnostic pathways is related to decision trees, two tree-based methods were used: the conditional inference trees (CTREE) and regression tree (RPART). The tree-based methods can be displayed graphically and more easily understood by physicians. Taking the diagnosis of HCV as a classification problem, other machine learning models were also trained for the purpose of our project. We used the generalized additive model (GAM), the generalized linear regression models, GLMNET (with penalization) and GLM (without penalization), and linear and quadratic discriminant analysis models (LDA, QDA), as well as naive Bayes (NB). We also added black-box models, including ensemble models random forest (RF) and boosting (AdaBoost) model, support vector machine (SVM) models with the linear and radial kernel, as well as the neural network (NN) model. 
 All the models were trained using the package `caret`. The regression models (GLM, LDA, etc. al.) can accept a mixture of variables that is suitable for our case. NB is useful when the predictor number is large. GAM model can include any quadratically penalized GLM and a variety of other models, which induces great flexibility. The linear regression model also assumed the independence of the predictors. The black-box models are more complicated and are expected to have better performance.
 
+\pagebreak
+
 ## 3.3 Parameters Tuning
 
-The tuning parameters are tested via the train function of the `caret` package. We looked for the point where the best cross-validated training accuracy is obtained. All the tuning plots are shown in Figure 3.
+The tuning parameters are tested via the train function of the `caret` package. We looked for the point where the best cross-validated training accuracy is obtained. All the tuning plots are shown in **Figure 2**.
 
 * *GLMNET Model*: We tested on different ranges of regularization parameter $\lambda$ and $\alpha$. The result is `alpha = 0.75` (selected via minimum rule), and `lambda = 0.0015`.
 
@@ -127,7 +123,7 @@ The tuning parameters are tested via the train function of the `caret` package. 
 
 * *RF and AdaBoost Model*: RF and AdaBoost are black-box ensemble methods. RF is trained by number of trees and minimum node size. The best tuned number of trees is 3, and minimum node size of 1 with Gini split rule. AdaBoost is trained via number of trees, tree depth and learning rate. The best tuned parameter is number of trees equals 3000, with tree depth of 7 and learning rate 0.05. 
 
-* *SVM models with linear and radial kernel*: An SVM with a linear kernel (support vector classifier) is tuned with the penalty C which determines the number and severity of the violations to the margin (and to the hyperplane) that we will tolerate. The tuning range is set to $[e^{-2},e^2]$ and the best C selected by cross-validation is $e^{-1.34}=0.263$. An SVM with a radial kernel is tuned with an additional $\gamma$ parameter(Sigma in kernlab) for kernel function. The larger the $\gamma$, the more flexible and non-linear the machine is. The tuning ranges are $C \in [e^{-1},e^4], \gamma \in [e^{-6},e^{-2}]$, and the best values selected by cross-validation are $C=e^{1.24}=3.473$ and $\gamma=e^{-3.55}=0.029$.
+* *SVM models with linear and radial kernel*: An SVM with a linear kernel (support vector classifier) is tuned with the penalty C which determines the number and severity of the violations to the margin (and to the hyperplane) that we will tolerate. The tuning range is set to $[e^{-2},e^2]$ and the best C selected by cross-validation is $e^{-1.34}=0.263$. An SVM with a radial kernel is tuned with an additional $\gamma$ parameter(Sigma in kernlab) for kernel function. The larger the $\gamma$, the more flexible and non-linear the machine is. The tuning ranges are $C \in [e^{-1},e^4], \gamma \in [e^{-6},e^{-2}]$, and the best values selected by cross-validation are $C=e^{1.63}=5.11$ and $\gamma=e^{-3.89}=0.020$.
 
 * *Neural Network Model*: The best tuned neural network model has 5 hidden units and a decay rate of 0.14.
 
@@ -139,7 +135,7 @@ knitr::include_graphics("./tuningPlots/tuning_plot_1.jpg")
 knitr::include_graphics("./tuningPlots/tuning_plot_2.jpg")
 ```
 \begin{center}
-Figure 3. Tuning Parameter Plots
+Figure 2. Tuning Parameter Plots
 \end{center}
 
 ## 3.4 Training Performance
@@ -150,10 +146,10 @@ We address the performance of each model by the repeated 10-folds cross-validati
 accuracy_plot <- readRDS("./accuracy.rds");accuracy_plot
 ```
 \begin{center}
-Figure 4. Repeated Cross-Validation Accuracy Plots
+Figure 3. Repeated Cross-Validation Accuracy Plots
 \end{center}
 
-As shown in the figure above, all of the models perform generally well. The best model with the highest accuracy and highest kappa is the support vector machine with a radial kernel, thus selected as our final model. It is worth noticing that the traditionally used tree methods were not outstanding compared with the other models. 
+As shown in the **Figure 3** above, all of the models perform generally well. The best model with the highest accuracy and highest kappa is the support vector machine with a radial kernel, thus selected as our final model. It is worth noticing that the traditionally used tree methods were not outstanding compared with the other models. 
 
 ## 3.5 Test performance
 
@@ -174,20 +170,20 @@ Our final selected model support vector machine (SVM) with a radial kernel is a 
 knitr::include_graphics("./plots/vippdp.jpg")
 ```
 \begin{center}
-Figure 5. Variable Importance Plot and Partial Dependence Plot of SVMR
+Figure 4. Variable Importance Plot and Partial Dependence Plot of SVMR
 \end{center}
 
-Figure 5 indicates that the amount of AST contributes the most to the ensemble model among all the predictors. The greater the AST level, the higher chance of being classified as having a liver disease. BIL, GGT, PROT, ALT, and ALP are also main contributing variables in our model. When holding other variables fixed, higher amounts of BIL, GGT, PROT, and lower amounts of ALT and ALP also suggest liver diseases.
+**Figure 4** indicates that the amount of AST contributes the most to the ensemble model among all the predictors. The greater the AST level, the higher chance of being classified as having a liver disease. BIL, GGT, PROT, ALT, and ALP are also main contributing variables in our model. When holding other variables fixed, higher amounts of BIL, GGT, PROT, and lower amounts of ALT and ALP also suggest liver diseases.
 
 ## 3.7 Model Visualization
 
-We select three significant variables: AST, BIL (both with a positive effect), and ALT (with a negative effect) to visualize our final SVM classifier, holding other variables fixed. Figure 6 shows an obvious non-linear decision boundary, which does a good job classifying patients (red dots) from donors (black dots).
+We select three significant variables: AST, BIL (both with a positive effect), and ALT (with a negative effect) to visualize our final SVM classifier, holding other variables fixed. **Figure 5** shows an obvious non-linear decision boundary, which does a good job classifying patients (red dots) from donors (black dots).
 
 ```{r classifier, echo=FALSE, out.width = '60%', fig.align='center'}
 knitr::include_graphics("./plots/classifier3D.png")
 ```
 \begin{center}
-Figure 6. SVM Classification Plot
+Figure 5. SVM Classification Plot
 \end{center}
 
 # 4 Limitations
@@ -224,7 +220,18 @@ Therefore we select the SVM model with a radial kernel to be our final model wit
 
 # 7 Appendix
 
+## More Infomations
+
 For the code of this report and more details, please visit our repository [Github Repo](https://github.com/MefiMefi/P8160_Project3_MCMC).
+
+## Figures
+
+```{r EDA_2, echo=FALSE, out.width = '90%', fig.align='center'}
+knitr::include_graphics("./plots/missing_corr.jpg")
+```
+\begin{center}
+Figure 6. Missing Data Plot and Correlation Plot
+\end{center}
 
 ```{r append1, echo=FALSE, out.width = '80%', fig.align='center'}
 knitr::include_graphics("./plots/all_vip.jpg")

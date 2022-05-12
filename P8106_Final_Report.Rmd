@@ -96,7 +96,7 @@ All the models were trained using the package `caret`. The regression models (GL
 
 The tuning parameters are tested via the train function of the `caret` package. We looked for the point where the best cross-validated training accuracy is obtained.
 
-* *GLMNET Model*: We tested on different ranges of regularization parameter $\lambda$ and $\alpha$. The result is `alpha = 0.75`, and `lambda = 0.0015`.
+* *GLMNET Model*: We tested on different ranges of regularization parameter $\lambda$ and $\alpha$. The result is `alpha = 0.75` (selected via minimum rule), and `lambda = 0.0015`.
 
 * *MARS Model*: MARS model can take a wide degree of features and number of terms. For simplicity, we only consider the performance of MARS in the first four degrees and all terms. The best tuned parameter is `degree = 2` and `nprune = 7`.
 
@@ -106,14 +106,14 @@ The tuning parameters are tested via the train function of the `caret` package. 
 
 * *SVM models with linear and radial kernel*: Linear kernel SVM model is tuned with the penalty associated with having an observation on the wrong side of the classification boundary. The best tuned cost is 0.30. Radial kernel SVM is tuned with an additional sigma parameter for kernel function, and the best tuned value is 0.020.
 
-* *Neural Network Model*: The best tuned neural network model has 5 hidden units and decay rate of 0.14.
+* *Neural Network Model*: The best tuned neural network model has 5 hidden units and a decay rate of 0.14.
 
 ```{r tuning_plot1, echo=FALSE, out.width = '90%', fig.align='center'}
-knitr::include_graphics("./tuningPlots/tuning_plot_1.jpg")
+#knitr::include_graphics("./tuningPlots/tuning_plot_1.jpg")
 ```
 
 ```{r tuning_plot2, echo=FALSE, out.width = '90%', fig.align='center'}
-knitr::include_graphics("./tuningPlots/tuning_plot_2.jpg")
+#knitr::include_graphics("./tuningPlots/tuning_plot_2.jpg")
 ```
 
 ## 3.4 Training Performance
@@ -131,7 +131,8 @@ As shown in the figure above, all of the models perform generally well. The best
 For test performance, we address the performance of each model by its error rate. 
 
 ```{r test_performance}
-kable_out <- readRDS("error_rate.rds");kable_out
+kable_out <- readRDS("error_rate.rds")
+kable_out %>% knitr::kable(col.names = c("Models", "Testing Error Rate"), digits = 5, caption = "Testing Error Rate")
 ```
 
 Not surprisingly, the SVM models has the smallest error rate of 0.02174 i.e. accuracy of 0.9783, therefore they have the best performance in prediction among all the models. 
@@ -143,6 +144,23 @@ Not surprisingly, the SVM models has the smallest error rate of 0.02174 i.e. acc
 Our dataset is imbalanced. The rare disease outcome may cause our model to underestimate the potential effect of some predictors. In the data preprocessing step, we assume data are missing-at-random but we never know whether this is the true scenario. Also, the models are trained and tested on normalized data for better classification results. However, it is hard to interpret the relationship between original values of covaraiate and the disease outcome based on the normalized data i.e. reduced interpretability. Last but not least, in terms of interpretability, support vector machine is limited comparing with regression and tree-based methods. They may be hard for physicians to tell their biological meaning.
 
 # 5 Conclusion
+
+We select the model with the best cross validation training accuracy. According to the plot in 3.4, the support vector machine model (SVM) with radial kernel has the highest median cross-validated accuracy among all models, and it also has a `kappa` value close to one and a good performance on testing set (lowest error rate).
+
+However, SVM models are lack of interpretability. It is hard to tell the relationship between covariates and the disease outcome only via SVM and therefore not so helpful clinically. The logistic regression model, GLMNET, has a much better interpretability and also relatively good performance on training and testing accuracy (top 3). The parameters of the GLMNET model is listed below:
+
+```{r glmnet_para}
+model.glmn <- readRDS("models/model.glmn.rds")
+sparse.matrix <- coef(model.glmn$finalModel, model.glmn$bestTune$lambda)
+sparse.matrix[,1] %>% knitr::kable(col.names = c("Coefficients"), 
+                                   caption = "GLMNET Coefficients")
+```
+
+We see that the amount of aspartate aminotransferase (`AST`), bilirubin (`BIL`), cholinesterase (`CHE`), creatine (`CREA`), gamma-glutamyl transferase (`GGT`) and protein in patient's blood (`PROT`) are positively related with the HCV disease. Other covariates including the gender being male, the amount of albumin (`ALB`), alkaline phosphatase (`ALP`), alanine transaminase (`ALT`) and cholesterol (`CHOL`) in patient's blood are negatively related with the disease. And `Age` does not appear to be a important factor in the diagnosis of HCV. 
+
+However, the coefficients does not necessarily justifies that there are causal relationship between these chemicals and the HCV disease, as further experiments are needed to prove that. 
+
+Therefore we select the SVM model with radial kernel to be our final model with the best performance, and the GLMNET model to be our final model when taking the data interpretability into account. They are the best models in diagnosing HCV disease (in an early stage) based on laboratory results among all models we have tested.
 
 # 6 Bibliography
 

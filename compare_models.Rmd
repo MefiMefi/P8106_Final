@@ -103,7 +103,7 @@ error_rate <- error_rate(models);error_rate
 
 ```{r TABLE}
 table_out <- data.frame(models = model_names, testing_error_rate = error_rate)
-kable_out <- table_out %>% knitr::kable(col.names = c("Models", "Testing Error Rate"), digits = 5)
-saveRDS(kable_out, "error_rate.rds")
+saveRDS(table_out, "error_rate.rds")
+table_out %>% knitr::kable(col.names = c("Models", "Testing Error Rate"), digits = 5)
 ```
 

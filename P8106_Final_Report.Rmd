@@ -109,11 +109,11 @@ The tuning parameters are tested via the train function of the `caret` package. 
 * *Neural Network Model*: The best tuned neural network model has 5 hidden units and a decay rate of 0.14.
 
 ```{r tuning_plot1, echo=FALSE, out.width = '90%', fig.align='center'}
-#knitr::include_graphics("./tuningPlots/tuning_plot_1.jpg")
+knitr::include_graphics("./tuningPlots/tuning_plot_1.jpg")
 ```
 
 ```{r tuning_plot2, echo=FALSE, out.width = '90%', fig.align='center'}
-#knitr::include_graphics("./tuningPlots/tuning_plot_2.jpg")
+knitr::include_graphics("./tuningPlots/tuning_plot_2.jpg")
 ```
 
 ## 3.4 Training Performance

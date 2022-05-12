@@ -172,10 +172,6 @@ print(w)
 
 barplot(w, las = 2, horiz = TRUE, cex.names = .9, col = colorRampPalette(colors = c("cyan", "blue"))(13), xlim = c(0,25))
 
-set.seed(2827)  # for reproducibility
-vip(test.fit, method = "permute", nsim = 5, train = hcv.train.df, 
-    target = "Attrition", metric = "auc", reference_class = "Yes")
-
 #pdp
 features = c("AST", "BIL", "GGT", "PROT", "ALT", "ALP")
 
@@ -191,11 +187,11 @@ grid.arrange(grobs = pdps,  ncol = 3)
 library(rgl)
 library(misc3d)
 
-plot3d(hcv.test.df[c(5,6,7)], col = as.numeric(hcv.test.df$Category), size = 4)
+plot3d(hcv.train.df[c(5,6,7)], col = as.numeric(hcv.train.df$Category), size = 4)
 
 # Get decision values for a new data grid
 len = 10
-newdat.list = lapply(hcv.test.df[c(5,6,7)], function(x) seq(min(x), max(x), len=len))
+newdat.list = lapply(hcv.train.df[c(5,6,7)], function(x) seq(min(x), max(x), len=len))
 newdat      = expand.grid(newdat.list)
 
 new = data.frame(Age = rep(0,len^3), Sex = c(rep(0,(len^3)/2), rep(1,(len^3)/2)), ALB = rep(0,len^3), ALP = rep(0, len^3), ALT = newdat$ALT, AST = newdat$AST, BIL = newdat$BIL, CHE = rep(0,len^3), CHOL = rep(0,len^3), CREA = rep(0,len^3), GGT = rep(1,len^3), PROT = rep(1.3, len^3))
@@ -206,6 +202,6 @@ newdat.dv   = attr(newdat.pred, 'decision.values')
 newdat.dv   = array(newdat.dv, dim=rep(len, 3))
 
 # Fit/plot an isosurface to the decision boundary
-contour3d(newdat.dv, level=0, x=newdat.list$ALT, y=newdat.list$AST, z=newdat.list$BIL, add=T, alpha = 0.6, color = "skyblue")
+contour3d(newdat.dv, level=0, x=newdat.list$ALT, y=newdat.list$AST, z=newdat.list$BIL, add=T, alpha = 0.5, color = "skyblue", smooth = 100)
 ```
 

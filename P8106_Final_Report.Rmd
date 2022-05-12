@@ -40,7 +40,7 @@ Creating a predictive model that could perform early detection of Hepatitis C an
 
 ## 1.3 Data Description
 
-The data contains 615 observations and 13 attributes of blood donors and Hepatitis C patients laboratory (10 laboratory results) and demographic values (age and gender), as well as a subject Category indicator. All attributes except the outcome indicator Category (blood donors vs. Hepatitis C, including its progress-Hepatitis C, Fibrosis, Cirrhosis) and Sex are numerical. Package `tydiverse` were used to clean data and transform data types for analysis convenience, package `caret` were used to partitioning data to training and testing set, 70% of the data to be train data and the 30% rest to be test data. I investigated for abnormal values in laboratory values, as well as the missing data. The descriptive analysis is shown in Table 1.
+The data contains 615 observations and 13 attributes of blood donors and Hepatitis C patients laboratory (10 laboratory results) and demographic values (age and gender), as well as a subject Category indicator. All attributes except the outcome indicator Category (blood donors vs. Hepatitis C, including its progress-Hepatitis C, Fibrosis, Cirrhosis) and Sex are numerical. Package `tydiverse` were used to clean data and transform data types for analysis convenience, package `caret` were used to partitioning data to training and testing set, 70% of the data to be train data and the 30% rest to be test data. We investigated for abnormal values in laboratory values, as well as the missing data. The descriptive analysis is shown in Table 1.
 
 ```{r, echo=FALSE}
 library(gtsummary)
@@ -61,7 +61,33 @@ hcv %>%
 
 # 2 Exploratory analysis/visualization
 
-## TODO
+In this section, we used the function `featurePlot()` in caret to visualize the continuous variables and the only binary predictor Sex in the original dataset. The Sex is plotted as a continuous variable for simplicity.
+The feature plots shows that the some of the continuous predictors are almost normal, like CHOL and ALB. 
+
+From **Figure 1**, we can explore the difference in distributions between patient and donor. For GGT, AST, BIL, CHE, PROT and ALT, the patients seem to have a wider distribution than the donors’, which means that there might be more variability among patients. As for CHOL and ALP, the shape of the distributions between two groups, but there are shift in distributions between two groups, that indicates that the level of serum biomarkers between two groups may be different.
+
+The rest of the continuous variable do not show an clearly difference. The percentage bar plot of Sex show that
+the percentage of male are higher in patient group.
+
+```{r EDA_1, echo=FALSE, out.width = '90%', fig.align='center'}
+knitr::include_graphics("./plots/featurePlot.png")
+```
+\begin{center}
+Figure 1. Distributions of Features in Two Categories
+\end{center}
+
+
+
+We found that there are 31 missing values in the dataset, we assumed that the missing to be missing-at-random (MAR), and we will implement impute method with Box Cox transformation before we train the models.
+
+We also investigated into the multicollinearities. From **Figure 2**, we found that the highest correlation is between AST and Category:Patient (with correlation 0.63), followed by the correlation between ALB and PROT (0.57). The correlation between AST and the response variable is intriguing, which indicates that the level of serum AST might have close relation to liver diseases.
+
+```{r EDA_2, echo=FALSE, out.width = '90%', fig.align='center'}
+knitr::include_graphics("./plots/missing_corr.jpg")
+```
+\begin{center}
+Figure 2. Missing Data Plot and Correlation Plot
+\end{center}
 
 # 3 Modeling
 
@@ -118,7 +144,7 @@ knitr::include_graphics("./tuningPlots/tuning_plot_2.jpg")
 
 ## 3.4 Training Performance
 
-We address the performance of each model by the repeated 10-folds cross-validation accuracy scores based on the training set. We also look at the `kappa` value that ranges from -1 to 1, which measures how well the classification performs compared to random classifier. Therefore for both accuracy and `kappa`, the larger the better.
+We address the performance of each model by the repeated 10-folds cross-validation accuracy scores based on the training set, repeated for 5 times. We also look at the `kappa` value that ranges from -1 to 1, which measures how well the classification performs compared to random classifier. Therefore for both accuracy and `kappa`, the larger the better.
 
 ```{r training_accuracy}
 accuracy_plot <- readRDS("./accuracy.rds");accuracy_plot

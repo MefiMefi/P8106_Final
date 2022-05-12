@@ -1,0 +1,127 @@
+---
+title: "EDA"
+author: "Renjie Wei"
+date: '2022-03-19'
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, warning = FALSE, message = FALSE)
+```
+
+```{r packages}
+setwd(dirname(rstudioapi::getSourceEditorContext()$path))
+library(gridExtra)
+library(ggplot2)
+library(corrplot)
+library(ResourceSelection)
+library(ISLR)
+library(pROC)
+library(tidyverse)
+library(summarytools)
+library(glmnet)
+library(caret)
+library(plotmo)
+library(readr)
+library(mlbench)
+library(gtsummary)
+library(rpart)
+library(rpart.plot)
+library(party)
+library(partykit)
+library(vip)
+library(recipes)
+
+
+library(skimr)
+library(visdat)
+library(reshape2)
+library(DataExplorer)
+library(ggcorrplot)
+library(mgcv)
+library(klaR)
+library(ggridges)
+library(AppliedPredictiveModeling)
+library(patchwork)
+library(Hmisc)
+library(groupdata2)
+library(reshape)
+library(glmnet)
+library(MASS)
+```
+
+
+```{r load_data}
+theme_set(theme_bw())
+hcv <- read.csv("HepatitisCdata.csv")[,-1]
+#sum(is.na(hcv)) #31
+hcv$Category <- case_when(hcv$Category == '0=Blood Donor' ~ 0,
+                          hcv$Category == '0s=suspect Blood Donor' ~ 0,
+                          TRUE ~ 1)
+hcv$Sex <- factor(hcv$Sex, levels = c("f", "m"))
+
+
+hcv.numeric <- hcv[,!names(hcv) %in% c("Category", "Sex")]
+hcv.factor <- hcv[,!names(hcv) %in% colnames(hcv.numeric)]
+hcv.factor <- hcv.factor[,!names(hcv.factor) %in% "Category"]
+
+y <- hcv$Category
+hcv$Category <- as.factor(ifelse(hcv$Category == 1, "patient", "donor"))
+hcv$Sex <- factor(as.numeric(hcv$Sex)-1)
+```
+
+```{r}
+miss.plot <- hcv %>% vis_miss()
+```
+
+```{r}
+trellis.par.set(theme = theme_bw())
+fp1 <- featurePlot(
+    x = hcv[,-1] %>% dplyr::select(-Sex),
+    y = hcv$Category,
+    scales = list(x = list(relation = "free"),
+                  y = list(relation = "free")),
+    plot = "density", pch = "|",
+    auto.key = list(columns = 2)) 
+
+fp1.pairs <- featurePlot(
+    x = hcv[,-1] %>% dplyr::select(-Sex),
+    y = hcv$Category,
+    scales = list(x = list(relation = "free"),
+                  y = list(relation = "free")),
+    plot = "pairs",
+    auto.key = list(columns = 2)) 
+
+
+fp2 <- featurePlot(
+    x = hcv[,-1] %>% dplyr::select(-Sex),
+    y = hcv$Category,
+    scales = list(x = list(relation = "free"),
+                  y = list(relation = "free")),
+    plot = "boxplot", pch = "|",
+    auto.key = list(columns = 2))
+
+fp3 <- ggplot(hcv, aes(Sex, group = Category)) + 
+    geom_bar(aes(y = ..prop.., fill = Category), alpha = .5,stat="count") +
+    scale_y_continuous(labels=scales::percent) +
+    ylab("relative frequencies") +
+    facet_wrap(~Category)
+
+lay <- rbind(c(1,1),
+             c(2,3))
+fp <- grid.arrange(fp1, fp2, fp3, layout_matrix = lay)
+ggsave(filename = "./plots/featurePlot.png",plot = fp, device = "png", width = 16, height = 18)
+```
+
+```{r corr}
+hcv.matrix <- model.matrix(~0 + ., data = hcv) 
+corr.plot <- ggcorrplot(cor(hcv.matrix), hc.order = TRUE, type = "full",
+                        outline.col = "white",
+                        ggtheme = ggplot2::theme_bw)
+```
+
+```{r}
+(miss.plot+corr.plot)
+```
+
+

@@ -117,6 +117,8 @@ ggsave(filename = "./plots/featurePlot.png",plot = fp, device = "png", width = 1
 hcv.matrix <- model.matrix(~0 + ., data = hcv) 
 corr.plot <- ggcorrplot(cor(hcv.matrix), hc.order = TRUE, type = "full",
                         outline.col = "white",
+                        lab = T,
+                        lab_size = 2,
                         ggtheme = ggplot2::theme_bw)
 ```
 

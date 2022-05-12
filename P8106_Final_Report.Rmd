@@ -75,8 +75,6 @@ knitr::include_graphics("./plots/featurePlot.png")
 Figure 1. Distributions of Features in Two Categories
 \end{center}
 
-
-
 We found that there are 31 missing values in the dataset, we assumed that the missing to be missing-at-random (MAR), and we will implement impute method with Box-Cox transformation before we train the models.
 
 We also investigated the multicollinearities. From **Figure 2**, we found that the highest correlation is between AST and Category: Patient (with a correlation of 0.63), followed by the correlation between ALB and PROT (0.57). The correlation between AST and the response variable is intriguing, which indicates that the level of serum AST might have a close relation to liver diseases.
@@ -140,6 +138,9 @@ knitr::include_graphics("./tuningPlots/tuning_plot_1.jpg")
 ```{r tuning_plot2, echo=FALSE, out.width = '90%', fig.align='center'}
 knitr::include_graphics("./tuningPlots/tuning_plot_2.jpg")
 ```
+\begin{center}
+Figure 3. Tuning Parameter Plots
+\end{center}
 
 ## 3.4 Training Performance
 
@@ -148,6 +149,9 @@ We address the performance of each model by the repeated 10-folds cross-validati
 ```{r training_accuracy}
 accuracy_plot <- readRDS("./accuracy.rds");accuracy_plot
 ```
+\begin{center}
+Figure 4. Repeated Cross-Validation Accuracy Plots
+\end{center}
 
 As shown in the figure above, all of the models perform generally well. The best model with the highest accuracy and highest kappa is the support vector machine with a radial kernel, thus selected as our final model. It is worth noticing that the traditionally used tree methods were not outstanding compared with the other models. 
 
@@ -188,7 +192,7 @@ Figure 6. SVM Classification Plot
 
 # 4 Limitations
 
-Our dataset is imbalanced. The rare disease outcome may cause our model to have a high no information rate and underestimate the potential effect of some predictors. In the data preprocessing step, we assume data are missing-at-random, but we never know whether this is the true scenario. Also, the models are trained and tested on normalized data for better classification results. However, it becomes harder to interpret the relationship between original values of covariates and the disease outcomes based on the normalized data i.e. reduced interpretability. Last but not least, in terms of interpretability, the support vector machine is limited compared with regression and tree-based methods. It may be hard for physicians to tell their biological meaning.
+Our dataset is imbalanced. The rare disease outcome may cause our model to have a high no information rate and underestimate the potential effect of some predictors. In the data preprocessing step, we assume data are missing-at-random, but we never know whether this is the true scenario. Also, for simplicity, this study only considered two response category, future works should be done in multiclass classification tasks. The models are trained and tested on normalized data for better classification results. However, it becomes harder to interpret the relationship between original values of covariates and the disease outcomes based on the normalized data i.e. reduced interpretability. Last but not least, in terms of interpretability, the support vector machine is limited compared with regression and tree-based methods. It may be hard for physicians to tell their biological meaning.
 
 # 5 Conclusion
 
@@ -219,3 +223,5 @@ Therefore we select the SVM model with a radial kernel to be our final model wit
 3. https://www.cdc.gov/hepatitis/hcv/index.htm
 
 # 7 Appendix
+
+

@@ -1,5 +1,6 @@
-# P8106_Final
-Final project for P8106 DSII
+# Predicting Hepatitis C Virus Patient Using Multiple Classification Methods
+
+Jibei Zheng, Renjie Wei, Shihui Zhu
 
 ## Motivation
 
